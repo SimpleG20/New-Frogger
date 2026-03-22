@@ -1,40 +1,69 @@
+using System;
 using UnityEngine;
 
-public class Vehicle : MonoBehaviour
+namespace NewFrogger.Vehicle.Presentation
 {
-    private VehicleModel _model;
-    private float _zLmimit;
-    private Vector3 _initialPos;
+    using Vehicle.Domain;
 
-    public void Initialize(VehicleModel model)
+    public class VehicleObject : MonoBehaviour
     {
-        _initialPos = transform.position;
-        _zLmimit = GameplaySettings.Instance.ZLimit;
-        SetModel(model);
-    }
+        public event Action<VehicleModel> OnLimitReached;
 
-    public void SetModel(VehicleModel model)
-    {
-        if (model == null) return;
-        _model = model;
-        _model.OnActiveChanged += HandleOnActiveChanged;
+        private float m_zLimit;
+        private Vector3 m_initialPos;
+        private VehicleModel m_model;
 
-        gameObject.SetActive(_model.Active);
-    }
+        public void Initialize(VehicleModel model, float zLimit)
+        {
+            m_initialPos = transform.position;
+            m_zLimit = zLimit;
+            SetModel(model);
+        }
 
-    public void Update()
-    {
-        if (_model == null) return;
-        if (!_model.Active) return;
-        
-        transform.Translate(Vector3.forward * _model.Speed * Time.deltaTime);
+        public void SetModel(VehicleModel model)
+        {
+            if (m_model != null)
+            {
+                m_model.OnActiveChanged -= HandleOnActiveChanged;
+            }
 
-        if (transform.position.z > _zLmimit) TestVehicle.OnVehicleLimitZ(_model);
-    }
+            m_model = model;
 
-    private void HandleOnActiveChanged(bool value)
-    {
-        gameObject.SetActive(value);
-        if (value == false) transform.position = _initialPos;
+            if (m_model != null)
+            {
+                m_model.OnActiveChanged += HandleOnActiveChanged;
+                gameObject.SetActive(m_model.Active);
+            }
+        }
+
+        private void Update()
+        {
+            if (m_model == null || !m_model.Active) return;
+
+            transform.Translate(Vector3.forward * m_model.Speed * Time.deltaTime);
+
+            if (transform.position.z > m_zLimit)
+            {
+                OnLimitReached?.Invoke(m_model);
+            }
+        }
+
+        private void HandleOnActiveChanged(bool value)
+        {
+            gameObject.SetActive(value);
+            
+            if (!value)
+            {
+                transform.position = m_initialPos;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (m_model != null)
+            {
+                m_model.OnActiveChanged -= HandleOnActiveChanged;
+            }
+        }
     }
 }
