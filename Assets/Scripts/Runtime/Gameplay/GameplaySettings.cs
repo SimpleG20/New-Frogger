@@ -1,13 +1,16 @@
-public class GameplaySettings
-{
-    public static GameplaySettings Instance { get; private set; }
-    public float ReferenceSpeed { get; private set; }
-    public float ZLimit { get; private set; }
+using NewFrogger.Gameplay.Data;
 
-    public GameplaySettings(GameplaySettingsSO settingsSO)
+namespace NewFrogger.Gameplay.Domain
+{
+    public class GameplaySettings
     {
-        Instance = this;
-        ReferenceSpeed = settingsSO.ReferenceSpeed;
-        ZLimit = settingsSO.ZLimit;
+        public float ReferenceSpeed { get; private set; }
+        public float ZLimit { get; private set; }
+
+        public GameplaySettings(GameplaySettingsSO settingsSO)
+        {
+            ReferenceSpeed = settingsSO.ReferenceSpeed;
+            ZLimit = settingsSO.ZLimit;
+        }
     }
 }
