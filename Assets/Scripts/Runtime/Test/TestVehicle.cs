@@ -8,8 +8,8 @@ using NewFrogger.Traffic.Data.Repositories;
 using NewFrogger.Traffic.Data.Datasources;
 using NewFrogger.Gameplay.Data;
 using NewFrogger.Vehicle.Domain;
-using NewFrogger.Gameplay.Domain;
 using NewFrogger.Vehicle.Presentation;
+using CustomLogger;
 
 namespace NewFrogger.Test
 {
@@ -42,8 +42,8 @@ namespace NewFrogger.Test
             spawner.Initialize(trafficSettings, 10);
 
             await UniTask.Delay(3000);
-            Debug.Log("[TestVehicle] Simulation Started");
-            spawner.StartSpawnning();
+            Log.log("[TestVehicle] Simulation Started");
+            spawner.StartSpawning();
         }
 
         private async UniTask<TrafficStatsModel> GetAPIStats()

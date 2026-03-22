@@ -1,21 +1,24 @@
 using UnityEngine;
 
-public struct TrafficSettings
+namespace NewFrogger.Vehicle.Domain
 {
-    public float VehicleDensity;
-    public float AverageSpeed;
-    public float ReferencedSpeed;
-    public float SpawnInterval;
-    public float zLimit;
-
-    public TrafficSettings(float vehicleDensity, float averageSpeed, float referencedSpeed, float zLimit)
+    public struct TrafficSettings
     {
-        this.zLimit = zLimit;
+        public float VehicleDensity;
+        public float AverageSpeed;
+        public float ReferencedSpeed;
+        public float SpawnInterval;
+        public float zLimit;
 
-        VehicleDensity = vehicleDensity;
-        AverageSpeed = averageSpeed;
-        ReferencedSpeed = referencedSpeed;
-        
-        SpawnInterval = 1f / Mathf.Max(VehicleDensity, 0.05f);
+        public TrafficSettings(float vehicleDensity, float averageSpeed, float referencedSpeed, float zLimit)
+        {
+            this.zLimit = zLimit;
+
+            VehicleDensity = vehicleDensity;
+            AverageSpeed = averageSpeed;
+            ReferencedSpeed = referencedSpeed;
+            
+            SpawnInterval = 1f / Mathf.Max(VehicleDensity, 0.05f);
+        }
     }
 }
