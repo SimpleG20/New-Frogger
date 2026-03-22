@@ -731,8 +731,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 47521aa61ef14409eb0b969836cc3bed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  v1: {fileID: 905287263}
   settingsSO: {fileID: 11400000, guid: 83b93b3bec7bd47398280fa9a23d6faa, type: 2}
+  vehicleView: {fileID: 905287263}
 --- !u!1 &1523016343
 GameObject:
   m_ObjectHideFlags: 0
