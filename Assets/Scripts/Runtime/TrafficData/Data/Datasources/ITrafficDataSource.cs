@@ -5,6 +5,6 @@ namespace NewFrogger.Traffic.Data.Datasources
 {
     public interface ITrafficDataSource
     {
-        UniTask<DTO.TrafficStatsDTO> GetStats(CancellationToken ct = default);
+        UniTask<DTO.TrafficStatsDTO> GetStats(int level, CancellationToken ct = default);
     }
 }

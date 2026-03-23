@@ -9,7 +9,7 @@ namespace NewFrogger.Traffic.Domain.Entities
 
         public TrafficStatsModel(TrafficStatusModel current, params TrafficPredictModel[] predicteds)
         {
-            CurrentStatus = current ?? throw new ArgumentNullException("Current Status cannot be null");
+            CurrentStatus = current ?? throw new ArgumentNullException(nameof(current));
             PredictedStatus = predicteds;
         }
 
@@ -25,9 +25,7 @@ namespace NewFrogger.Traffic.Domain.Entities
         public static TrafficStatsModel FromDTO(Data.DTO.TrafficStatsDTO dto)
         {
             var current = TrafficStatusModel.FromDTO(dto.current_status);
-            var predicteds = dto.predicted_status.Length > 0 
-                                ? new TrafficPredictModel[dto.predicted_status.Length] 
-                                : Array.Empty<TrafficPredictModel>();
+            var predicteds = Array.ConvertAll(dto.predicted_status, p => TrafficPredictModel.FromDTO(p));
             
             for (int i = 0; i < dto.predicted_status.Length; i++)
             {

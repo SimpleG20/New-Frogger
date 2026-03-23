@@ -6,6 +6,6 @@ namespace NewFrogger.Traffic.Domain.Repositories
 {
     public interface ITrafficRepository
     {
-        UniTask<TrafficStatsModel> GetStats(CancellationToken ct = default);
+        UniTask<TrafficStatsModel> GetStats(int level, CancellationToken ct);
     }
 }
