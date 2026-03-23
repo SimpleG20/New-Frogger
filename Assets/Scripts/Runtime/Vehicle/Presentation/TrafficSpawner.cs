@@ -25,24 +25,6 @@ namespace NewFrogger.Vehicle.Presentation
         private ObjectPool<VehicleView> _pool;
         private Dictionary<VehicleModel, VehicleView> _activeVehicles;
 
-
-        public void Initialize(TrafficSettings settings, int vehiclesAmount)
-        {
-            _spawnCTS = new();
-            _activeVehicles = new();
-
-            _lastLaneChoosen = -1;
-            
-            _pool = new ObjectPool<VehicleView>(
-                CreateVehicle,
-                OnGetVehicle,
-                OnReleaseVehicle,
-                OnDestroyVehicle,
-                defaultCapacity: vehiclesAmount
-            );
-            UpdateTrafficSettings(settings);
-        }
-
         private VehicleView CreateVehicle()
         {
             var vehicle = Instantiate(_vehiclePrefab, _vehicleParent);
@@ -88,8 +70,22 @@ namespace NewFrogger.Vehicle.Presentation
             _pool.Release(_activeVehicles[model]);
         }
 
-        public void StartSpawning()
+        public void HandleStart(TrafficSettings settings, int vehiclesAmount)
         {
+            _spawnCTS = new();
+            _activeVehicles = new();
+
+            _lastLaneChoosen = -1;
+
+            _pool = new ObjectPool<VehicleView>(
+                CreateVehicle,
+                OnGetVehicle,
+                OnReleaseVehicle,
+                OnDestroyVehicle,
+                defaultCapacity: vehiclesAmount
+            );
+            UpdateTrafficSettings(settings);
+
             _ = SpawnRoutine();
         }
 
@@ -118,7 +114,6 @@ namespace NewFrogger.Vehicle.Presentation
             }
         }
 
-        [ContextMenu("Stop")]
         public void StopSpawning()
         {
             _spawnCTS?.Cancel();
@@ -141,9 +136,12 @@ namespace NewFrogger.Vehicle.Presentation
 
             _pool?.Dispose();
 
-            foreach (var v in _activeVehicles)
+            if (_activeVehicles != null)
             {
-                v.Value.OnLimitReached -= HandleOnLimitReached;
+                foreach (var v in _activeVehicles)
+                {
+                    v.Value.OnLimitReached -= HandleOnLimitReached;
+                }
             }
         }
     }

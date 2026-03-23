@@ -33,17 +33,18 @@ namespace NewFrogger.Test
             }
         }
 
-        private async UniTask InitializeAsync()
+        private UniTask InitializeAsync()
         {
-            var stats = await GetAPIStats();
-            var currentStats = stats.CurrentStatus;
+            return UniTask.CompletedTask;
+            //var stats = await GetAPIStats();
+            //var currentStats = stats.CurrentStatus;
 
-            var trafficSettings = new TrafficSettings(currentStats.VehicleDensity, currentStats.AverageSpeed, settingsSO.ReferenceSpeed, settingsSO.ZLimit);
-            spawner.Initialize(trafficSettings, 10);
+            //var trafficSettings = new TrafficSettings(currentStats.VehicleDensity, currentStats.AverageSpeed, settingsSO.ReferenceSpeed, settingsSO.ZLimit);
+            //spawner.Initialize(trafficSettings, 10);
 
-            await UniTask.Delay(3000);
-            Log.log("[TestVehicle] Simulation Started");
-            spawner.StartSpawning();
+            //await UniTask.Delay(3000);
+            //Log.log("[TestVehicle] Simulation Started");
+            //spawner.StartSpawning();
         }
 
         private async UniTask<TrafficStatsModel> GetAPIStats()

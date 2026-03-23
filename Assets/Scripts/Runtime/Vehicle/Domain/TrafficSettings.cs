@@ -1,3 +1,4 @@
+using NewFrogger.Traffic.Domain.Enums;
 using UnityEngine;
 
 namespace NewFrogger.Vehicle.Domain
@@ -9,14 +10,16 @@ namespace NewFrogger.Vehicle.Domain
         public float ReferencedSpeed;
         public float SpawnInterval;
         public float zLimit;
+        public ETrafficWeather Weather;
 
-        public TrafficSettings(float vehicleDensity, float averageSpeed, float referencedSpeed, float zLimit)
+        public TrafficSettings(float vehicleDensity, float averageSpeed, ETrafficWeather weather, float referencedSpeed, float zLimit)
         {
             this.zLimit = zLimit;
 
-            VehicleDensity = vehicleDensity;
+            Weather = weather;
             AverageSpeed = averageSpeed;
             ReferencedSpeed = referencedSpeed;
+            VehicleDensity = vehicleDensity;
             
             SpawnInterval = 1f / Mathf.Max(VehicleDensity, 0.05f);
         }
