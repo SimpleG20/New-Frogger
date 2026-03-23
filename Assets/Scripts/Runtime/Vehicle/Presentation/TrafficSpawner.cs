@@ -1,73 +1,65 @@
 using System;
 using System.Threading;
 using System.Collections.Generic;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Pool;
 
-using NewFrogger.Vehicle.Domain;
-using NewFrogger.Vehicle.Presentation;
 using CustomLogger;
+using Cysharp.Threading.Tasks;
+using NewFrogger.Vehicle.Domain;
 
-public class TrafficSpawner : MonoBehaviour
+namespace NewFrogger.Vehicle.Presentation
 {
-    [SerializeField] private VehicleView _vehiclePrefab;
-    [SerializeField] private Transform _vehicleParent;
-    [SerializeField] private Transform[] _lanes;
-
-    public event Action<VehicleView> OnSpawn;
-
-    private int _lastLaneChoosen;
-    private TrafficSettings _currentSettings;
-    private CancellationTokenSource _spawnCTS;
-
-    private ObjectPool<VehicleView> _pool;
-    private Dictionary<VehicleModel, VehicleView> _activeVehicles;
-
-
-    public void Initialize(TrafficSettings settings, int vehiclesAmount)
+    public class TrafficSpawner : MonoBehaviour
     {
-        _activeVehicles = new();
-        _pool = new ObjectPool<VehicleView>(CreateVehicle, defaultCapacity: vehiclesAmount);
-        UpdateTrafficSettings(settings);
-    }
+        [SerializeField] private VehicleView _vehiclePrefab;
+        [SerializeField] private Transform _vehicleParent;
+        [SerializeField] private Transform[] _lanes;
 
-    private VehicleView CreateVehicle()
-    {
-        var vehicle = Instantiate(_vehiclePrefab, _vehicleParent);
-        var model = new VehicleModel(_currentSettings.AverageSpeed, _currentSettings.ReferencedSpeed);
-        vehicle.Initialize(model, _currentSettings.zLimit);
-        vehicle.OnLimitReached += HandleOnLimitReached;
+        public event Action<VehicleView> OnSpawn;
 
-        return vehicle;
-    }
+        private int _lastLaneChoosen;
+        private TrafficSettings _currentSettings;
+        private CancellationTokenSource _spawnCTS;
 
-    private void HandleOnLimitReached(VehicleModel model)
-    {
-        model.SetActive(false);
-        _pool.Release(_activeVehicles[model]);
-        _activeVehicles.Remove(model);
-    }
+        private ObjectPool<VehicleView> _pool;
+        private Dictionary<VehicleModel, VehicleView> _activeVehicles;
 
-    public void StartSpawnning()
-    {
-        _ = SpawnRoutine();
-    }
-    private async UniTaskVoid SpawnRoutine() 
-    {
-        try
+
+        public void Initialize(TrafficSettings settings, int vehiclesAmount)
         {
-            _spawnCTS?.Cancel();
-            _spawnCTS = new CancellationTokenSource();
+            _spawnCTS = new();
+            _activeVehicles = new();
 
-            await UniTask.Delay(TimeSpan.FromSeconds(_currentSettings.SpawnInterval), cancellationToken: _spawnCTS.Token);
+            _lastLaneChoosen = -1;
+            
+            _pool = new ObjectPool<VehicleView>(
+                CreateVehicle,
+                OnGetVehicle,
+                OnReleaseVehicle,
+                OnDestroyVehicle,
+                defaultCapacity: vehiclesAmount
+            );
+            UpdateTrafficSettings(settings);
+        }
 
-            var vehicle = _pool.Get();
+        private VehicleView CreateVehicle()
+        {
+            var vehicle = Instantiate(_vehiclePrefab, _vehicleParent);
+            var model = new VehicleModel(_currentSettings.AverageSpeed, _currentSettings.ReferencedSpeed);
+            vehicle.Initialize(model, _currentSettings.zLimit);
+            vehicle.OnLimitReached += HandleOnLimitReached;
+
+            return vehicle;
+        }
+
+        private void OnGetVehicle(VehicleView vehicle)
+        {
             int lane = UnityEngine.Random.Range(0, _lanes.Length);
             int trys = 10;
-            while (lane == _lastLaneChoosen || trys > 0)
+            while (lane == _lastLaneChoosen && trys > 0)
             {
-                lane = UnityEngine.Random.Range(0, _lastLaneChoosen);
+                lane = UnityEngine.Random.Range(0, _lanes.Length);
                 trys--;
             }
 
@@ -75,39 +67,84 @@ public class TrafficSpawner : MonoBehaviour
             vehicle.SetPosition(_lanes[lane].position);
 
             var model = vehicle.GetModel();
-            _activeVehicles[model] = vehicle;
-
             model.SetActive(true);
-
-            OnSpawn?.Invoke(vehicle);
+            _activeVehicles[model] = vehicle;
         }
-        catch (Exception e)
+
+        private void OnReleaseVehicle(VehicleView vehicle)
         {
-            Log.log(e);
+            var model = vehicle.GetModel();
+            model.SetActive(false);
+            _activeVehicles.Remove(model);
         }
-    }
-    
-    [ContextMenu("Stop")]
-    public void StopSpawnning()
-    {
-        _spawnCTS?.Cancel();
-    }
 
-    public void UpdateTrafficSettings(TrafficSettings settings) 
-    {
-        _currentSettings = settings;
-
-        foreach(var model in _activeVehicles.Keys)
+        private void OnDestroyVehicle(VehicleView vehicle)
         {
-            model.ChangeSpeed(settings.AverageSpeed);
+            Destroy(vehicle.gameObject);
         }
-    }
 
-    public void OnDestroy()
-    {
-        foreach(var v in _activeVehicles)
+        private void HandleOnLimitReached(VehicleModel model)
         {
-            v.Value.OnLimitReached -= HandleOnLimitReached;
+            _pool.Release(_activeVehicles[model]);
+        }
+
+        public void StartSpawning()
+        {
+            _ = SpawnRoutine();
+        }
+
+        private async UniTask SpawnRoutine()
+        {
+            try
+            {
+                while (_spawnCTS != null && !_spawnCTS.Token.IsCancellationRequested)
+                {
+                    _spawnCTS?.Cancel();
+                    _spawnCTS = new CancellationTokenSource();
+
+                    await UniTask.Delay(TimeSpan.FromSeconds(_currentSettings.SpawnInterval), cancellationToken: _spawnCTS.Token);
+
+                    var vehicle = _pool.Get();
+                    OnSpawn?.Invoke(vehicle);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Log.log("SpawnRoutine cancelled");
+            }
+            catch (Exception e)
+            {
+                Log.log(e);
+            }
+        }
+
+        [ContextMenu("Stop")]
+        public void StopSpawning()
+        {
+            _spawnCTS?.Cancel();
+        }
+
+        public void UpdateTrafficSettings(TrafficSettings settings)
+        {
+            _currentSettings = settings;
+
+            foreach (var model in _activeVehicles.Keys)
+            {
+                model.ChangeSpeed(settings.AverageSpeed);
+            }
+        }
+
+        public void OnDestroy()
+        {
+            _spawnCTS?.Cancel();
+            _spawnCTS?.Dispose();
+
+            _pool?.Dispose();
+
+            foreach (var v in _activeVehicles)
+            {
+                v.Value.OnLimitReached -= HandleOnLimitReached;
+            }
         }
     }
 }
