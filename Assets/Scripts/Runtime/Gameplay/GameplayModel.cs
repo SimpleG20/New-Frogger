@@ -17,38 +17,54 @@ public class GameplayModel
 
     private int _predictionIndex;
     private bool _isRunningLevel;
+    private readonly object _levelLock = new object();
+
     private LevelData _levelData;
     private GetTrafficStatsService _trafficStatsService;
     private GameplaySettingsSO _gameplaySettingsSO;
     private CancellationTokenSource _predictionCTS;
+    private CancellationTokenSource _gameCTS;
+    private CancellationToken _gameCT;
 
-    public GameplayModel(GameplaySettingsSO settingsSO, GetTrafficStatsService _trafficService)
+    public GameplayModel(GameplaySettingsSO settingsSO, GetTrafficStatsService trafficService)
     {
         _gameplaySettingsSO = settingsSO;
-        _trafficStatsService = _trafficService;
+        _trafficStatsService = trafficService;
+        _gameCTS = new CancellationTokenSource();
+        _gameCT = _gameCTS.Token;
     }
 
     public async UniTaskVoid StartNewLevel()
     {
-        if (_isRunningLevel)
+        lock (_levelLock)
         {
-            Log.log("Level is running, please end the level, before start a new one");
-            return;
+            if (_isRunningLevel)
+            {
+                Log.log("Level is running, please end the level, before start a new one");
+                return;
+            }
+            _isRunningLevel = true;
         }
 
-        _isRunningLevel = true;
-        _predictionIndex = 0;
+        try
+        {
+            _predictionIndex = 0;
 
-        CurrentLevel++;
+            CurrentLevel++;
 
-        var status = await _trafficStatsService.call();
-        _levelData = new LevelData(_gameplaySettingsSO.ReferenceSpeed, _gameplaySettingsSO.ZLimit, status.CurrentStatus, status.PredictedStatus);
+            var status = await _trafficStatsService.call(new StatsArg(CurrentLevel, _gameCT));
+            _levelData = new LevelData(_gameplaySettingsSO.ReferenceSpeed, _gameplaySettingsSO.ZLimit, status.CurrentStatus, status.PredictedStatus);
 
-        OnStartNewLevel?.Invoke();
-        SetCurrentTrafficSettings(_predictionIndex);
+            OnStartNewLevel?.Invoke();
+            SetCurrentTrafficSettings(_predictionIndex);
 
-        _predictionCTS = new CancellationTokenSource();
-        _ = StartPrediction();
+            _predictionCTS = new CancellationTokenSource();
+            _ = StartPrediction();
+        }
+        catch (Exception ex)
+        {
+            Log.log(ex);
+        }
     }
 
     private async UniTask StartPrediction()
@@ -75,6 +91,8 @@ public class GameplayModel
 
     private bool NextPrediction()
     {
+        if (_levelData.Equals(default)) return false;
+
         _predictionIndex++;
         return _predictionIndex < _levelData.TrafficSettings.Length;
     }
@@ -101,5 +119,16 @@ public class GameplayModel
         _isRunningLevel = false;
 
         OnStopLevel?.Invoke();
+    }
+
+    public void Dispose()
+    {
+        _predictionCTS?.Cancel();
+        _predictionCTS?.Dispose();
+        _predictionCTS = null;
+
+        _gameCTS?.Cancel();
+        _gameCTS.Dispose();
+        _gameCTS = null;
     }
 }
