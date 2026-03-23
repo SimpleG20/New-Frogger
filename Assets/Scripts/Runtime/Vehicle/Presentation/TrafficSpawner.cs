@@ -119,6 +119,18 @@ namespace NewFrogger.Vehicle.Presentation
             _spawnCTS?.Cancel();
         }
 
+        public void HideVehicles()
+        {
+            if (_activeVehicles == null || _activeVehicles.Count == 0) return;
+
+            foreach(var v in _activeVehicles)
+            {
+                _pool.Release(v.Value);
+            }
+
+            _activeVehicles.Clear();
+        }
+
         public void UpdateTrafficSettings(TrafficSettings settings)
         {
             _currentSettings = settings;
@@ -134,8 +146,6 @@ namespace NewFrogger.Vehicle.Presentation
             _spawnCTS?.Cancel();
             _spawnCTS?.Dispose();
 
-            _pool?.Dispose();
-
             if (_activeVehicles != null)
             {
                 foreach (var v in _activeVehicles)
@@ -143,6 +153,8 @@ namespace NewFrogger.Vehicle.Presentation
                     v.Value.OnLimitReached -= HandleOnLimitReached;
                 }
             }
+
+            _pool?.Dispose();
         }
     }
 }

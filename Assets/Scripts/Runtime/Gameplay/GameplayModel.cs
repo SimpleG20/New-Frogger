@@ -1,10 +1,10 @@
+using System;
+using System.Threading;
 using CustomLogger;
 using Cysharp.Threading.Tasks;
 using NewFrogger.Gameplay.Data;
 using NewFrogger.Traffic.Domain.Services;
 using NewFrogger.Vehicle.Domain;
-using System;
-using System.Threading;
 
 public class GameplayModel
 {
@@ -55,29 +55,28 @@ public class GameplayModel
     {
         try
         {
-            while (_predictionCTS != null && !_predictionCTS.Token.IsCancellationRequested)
+            while (_predictionCTS != null && !_predictionCTS.Token.IsCancellationRequested && NextPrediction())
             {
                 var estimatedTime = _levelData.TrafficSettings[_predictionIndex].EstimatedTime;
 
                 await UniTask.Delay(TimeSpan.FromMilliseconds(estimatedTime), cancellationToken: _predictionCTS.Token);
 
-                _predictionIndex++;
-
-                if (_predictionIndex >= _levelData.TrafficSettings.Length)
-                {
-                    EndLevel();
-                }
-                else
-                {
-                    SetCurrentTrafficSettings(_predictionIndex);
-                }
+                SetCurrentTrafficSettings(_predictionIndex);
             }
+
+            EndLevel();
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
         {
             Log.log(ex);
         }
+    }
+
+    private bool NextPrediction()
+    {
+        _predictionIndex++;
+        return _predictionIndex < _levelData.TrafficSettings.Length;
     }
 
     private void SetCurrentTrafficSettings(int index)

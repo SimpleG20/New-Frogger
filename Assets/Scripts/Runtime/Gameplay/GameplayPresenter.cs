@@ -38,6 +38,7 @@ public class GameplayPresenter : MonoBehaviour
     private void HandleOnStopLevel()
     {
         _trafficSpawner.StopSpawning();
+        _trafficSpawner.HideVehicles();
     }
 
     private void HandleOnStartNewLevel()
@@ -49,6 +50,7 @@ public class GameplayPresenter : MonoBehaviour
     {
         Log.log("New traffic settings set");
         _trafficSpawner.UpdateTrafficSettings(newSettings);
+        //_view.UpdateTrafficSettings
     }
 
     [ContextMenu("Start")]

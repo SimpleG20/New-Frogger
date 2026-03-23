@@ -22,7 +22,7 @@ public struct LevelData
             )
         );
 
-        for (int i = 1; i < predicteds.Length; i++)
+        for (int i = 1; i <= predicteds.Length; i++)
         {
             var predicted = predicteds[i - 1];
             var status = predicted.Status;
