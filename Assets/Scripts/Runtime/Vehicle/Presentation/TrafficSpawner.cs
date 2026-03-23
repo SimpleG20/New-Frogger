@@ -123,12 +123,12 @@ namespace NewFrogger.Vehicle.Presentation
         {
             if (_activeVehicles == null || _activeVehicles.Count == 0) return;
 
-            foreach(var v in _activeVehicles)
-            {
-                _pool.Release(v.Value);
-            }
+            var vehicles = new List<VehicleView>(_activeVehicles.Values);
 
-            _activeVehicles.Clear();
+            foreach(var v in vehicles)
+            {
+                _pool.Release(v);
+            }
         }
 
         public void UpdateTrafficSettings(TrafficSettings settings)

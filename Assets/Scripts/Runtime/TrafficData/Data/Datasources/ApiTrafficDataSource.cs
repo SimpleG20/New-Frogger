@@ -46,7 +46,8 @@ namespace NewFrogger.Traffic.Data.Datasources
                 // TODO: Remove later
                 Log.log(json);
 
-                return JsonUtility.FromJson<TrafficStatsDTO>(json);
+                var result = JsonUtility.FromJson<TrafficStatsDTO>(json);
+                return result;
             }
             catch (OperationCanceledException)
             {
