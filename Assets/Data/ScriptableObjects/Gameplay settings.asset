@@ -21,4 +21,4 @@ MonoBehaviour:
   <MinZ>k__BackingField: -8
   <MaxZ>k__BackingField: 8
   <GridMovementFactor>k__BackingField: 1
-  <PlayerDelayFactor>k__BackingField: 2
+  <PlayerDelayFactor>k__BackingField: 1

@@ -21,6 +21,8 @@ namespace NewFrogger.Player.Domain
         private float _timeGap;
         private float _lastTimeMoved;
 
+        private bool _canMove;
+
         private Tuple<float, float> _limitsX;
         private Tuple<float, float> _limitsZ;
         
@@ -43,7 +45,9 @@ namespace NewFrogger.Player.Domain
             _lastTimeMoved = _timeProvider.Time;
             _limitsX = new Tuple<float, float>(settings.MinX, settings.MaxX);
             _limitsZ = new Tuple<float, float>(settings.MinZ, settings.MaxZ);
+
             _timeGap = 0;
+            _canMove = false;
 
             SetActive(false);
         }
@@ -53,6 +57,10 @@ namespace NewFrogger.Player.Domain
             if (value == Active) return;
             Active = value;
             OnActiveChanged?.Invoke(value);
+        }
+        public void SetCanMove(bool value)
+        {
+            _canMove = value;
         }
 
         public void Move(Vector2 direction)
@@ -78,6 +86,7 @@ namespace NewFrogger.Player.Domain
         private bool IsMovementValid(Vector2 direction)
         {
             if (!Active) return false;
+            if (!_canMove) return false;
             if (_timeProvider.Time - _lastTimeMoved < _timeGap) return false;
             if (direction.y < 0) return false;
 
@@ -105,6 +114,7 @@ namespace NewFrogger.Player.Domain
 
         public void Reset()
         {
+            _canMove = false;
             _position = _initialPos;
             OnPositionChanged?.Invoke(0, _position);
             SetActive(false);

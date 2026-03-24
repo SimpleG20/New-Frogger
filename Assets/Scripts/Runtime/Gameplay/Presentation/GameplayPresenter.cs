@@ -11,21 +11,31 @@ using NewFrogger.Player.Domain;
 using NewFrogger.Player.Presentation;
 using NewFrogger.Vehicle.Domain;
 using NewFrogger.Vehicle.Presentation;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace NewFrogger.Gameplay.Presentation
 {
     public class GameplayPresenter : MonoBehaviour
     {
+        [SerializeField] private string _apiBaseUrl = "https://f98dcad7-664e-44fb-8c6f-79c727a98caf.mock.pstmn.io";
         [SerializeField] private GameplaySettingsSO _gameplaySettingsSO;
+        [SerializeField] private GameplayView _gameplayView;
+
+        [Header("Traffic")]
         [SerializeField] private TrafficSpawner _trafficSpawner;
+        [SerializeField] private TrafficView _trafficView;
+
+        [Header("Player")]
         [SerializeField] private PlayerView _playerView;
         [SerializeField] private PlayerInput _input;
-        [SerializeField] private string _apiBaseUrl = "https://f98dcad7-664e-44fb-8c6f-79c727a98caf.mock.pstmn.io";
 
         private PlayerModel _player;
         private TrafficModel _traffic;
         private GameplayInputHandler _gameplayInput;
         private GameplayCompositionRoot _compositionRoot;
+
+        private CancellationTokenSource _generalCTS;
 
         private void Awake()
         {
@@ -36,6 +46,7 @@ namespace NewFrogger.Gameplay.Presentation
         {
             Log.SetLogger(new EditorLogger());
 
+            _generalCTS = new CancellationTokenSource();
             _compositionRoot = new GameplayCompositionRoot(_apiBaseUrl);
 
             InitializeTraffic();
@@ -43,14 +54,22 @@ namespace NewFrogger.Gameplay.Presentation
 
             _gameplayInput = new GameplayInputHandler(_player, _input);
 
+            _gameplayView.Initialize();
+            _gameplayView.OnStart += StartGameplay;
+            _gameplayView.OnStop += StopGameplay;
+
             Log.log("Gameplay Presenter Initialized");
         }
         private void InitializeTraffic()
         {
-            _traffic = new TrafficModel(_gameplaySettingsSO, _compositionRoot.GetTrafficStatsService());
+            _traffic = new TrafficModel(_gameplaySettingsSO, _compositionRoot.GetTrafficStatsService(), _generalCTS.Token);
             _traffic.OnTrafficSettingsChanged += HandleOnTrafficSettingsChanged;
             _traffic.OnStartNewLevel += HandleOnTrafficStartNewLevel;
             _traffic.OnStopLevel += HandleOnTrafficStopLevel;
+            _traffic.OnGameEnded += HandleOnGameEnded;
+
+            _trafficView.Initialize(_traffic);
+            _trafficView.OnPanelHid += HandleOnPanelHid;
         }
         private void InitializePlayer()
         {
@@ -62,12 +81,16 @@ namespace NewFrogger.Gameplay.Presentation
         }
 
         #region Handle Events
+        private void HandleOnPanelHid()
+        {
+            _player.SetCanMove(true);
+        }
         private void HandleOnTrafficStopLevel()
         {
             _trafficSpawner.StopSpawning();
             _trafficSpawner.HideVehicles();
         }
-        private void HandleOnTrafficStartNewLevel()
+        private void HandleOnTrafficStartNewLevel(int level, int time)
         {
             _trafficSpawner.HandleStart(_traffic.CurrentTrafficSettings, 10);
         }
@@ -75,6 +98,7 @@ namespace NewFrogger.Gameplay.Presentation
         {
             _trafficSpawner.UpdateTrafficSettings(newSettings);
             _player.ChangeSpeedAccordingToWeather(newSettings.Weather);
+            _player.SetCanMove(false);
         }
         private void HandleOnPlayerFinishedMovement()
         {
@@ -84,28 +108,46 @@ namespace NewFrogger.Gameplay.Presentation
         private void HandleOnPlayerHitVehicle()
         {
             EndLevel();
-
-            // TODO: view shows the init button again
+        }
+        private void HandleOnGameEnded()
+        {
+            _trafficSpawner.StopSpawning();
+            _trafficSpawner.HideVehicles();
+            _player.SetCanMove(false);
+            StopGameplay();
         }
         #endregion
 
-        [ContextMenu("Start")]
         private void StartGameplay()
+        {
+            _gameplayView.HideStartMenu();
+            _gameplayView.ShowGameplayPanel();
+            StartNewLevel();
+        }
+        private void StartNewLevel()
         {
             _ = _traffic.StartNewLevel();
             _player.SetActive(true);
+            _player.SetCanMove(true);
         }
-        private void Victory()
+        private void StopGameplay()
+        {
+            _generalCTS?.Cancel();
+            _gameplayView.HideGameplayPanel();
+            _gameplayView.ShowStartMenu();
+        }
+        private async UniTask Victory()
         {
             EndLevel();
 
             if (_traffic.CanNextLevel())
             {
-                _ = UniTask.Delay(TimeSpan.FromSeconds(2)).ContinueWith(StartGameplay);
+                await _gameplayView.ShowChangeLevelPanel(_generalCTS.Token);
+                StartNewLevel();
             }
             else
             {
-                Log.log("All levels done");
+                StopGameplay();
             }
         }
         private void EndLevel()
@@ -114,7 +156,6 @@ namespace NewFrogger.Gameplay.Presentation
             _player?.Reset();
         }
 
-
         private void OnDestroy()
         {
             if (_traffic != null)
@@ -122,9 +163,21 @@ namespace NewFrogger.Gameplay.Presentation
                 _traffic.OnTrafficSettingsChanged -= HandleOnTrafficSettingsChanged;
                 _traffic.OnStartNewLevel -= HandleOnTrafficStartNewLevel;
                 _traffic.OnStopLevel -= HandleOnTrafficStopLevel;
+                _traffic.OnGameEnded -= HandleOnGameEnded;
                 _traffic.Dispose();
             }
-            
+
+            if (_trafficView != null)
+            {
+                _trafficView.OnPanelHid -= HandleOnPanelHid;
+            }
+
+            if (_playerView != null)
+            {
+                _playerView.OnPlayerFinishedMovement -= HandleOnPlayerFinishedMovement;
+                _playerView.OnVehicleHit -= HandleOnPlayerHitVehicle;
+            }
+
             _gameplayInput?.Dispose();
         }
     }
