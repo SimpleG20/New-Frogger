@@ -3,14 +3,14 @@ using UnityEngine;
 
 namespace NewFrogger.Vehicle.Domain
 {
-    public struct TrafficSettings
+    public readonly struct TrafficSettings
     {
-        public float VehicleDensity;
-        public float AverageSpeed;
-        public float ReferencedSpeed;
-        public float SpawnInterval;
-        public float zLimit;
-        public ETrafficWeather Weather;
+        public float VehicleDensity { get; }
+        public float AverageSpeed { get; }
+        public float ReferencedSpeed { get; }
+        public float SpawnInterval { get; }
+        public float zLimit { get; }
+        public ETrafficWeather Weather { get; }
 
         public TrafficSettings(float vehicleDensity, float averageSpeed, ETrafficWeather weather, float referencedSpeed, float zLimit)
         {

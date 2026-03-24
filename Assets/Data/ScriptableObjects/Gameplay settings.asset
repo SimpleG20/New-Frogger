@@ -14,3 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   <ReferenceSpeed>k__BackingField: 5
   <ZLimit>k__BackingField: 10
+  <MinX>k__BackingField: -4.5
+  <MaxX>k__BackingField: 4.5
+  <MinZ>k__BackingField: 0
+  <MaxZ>k__BackingField: 10
+  <GridMovementFactor>k__BackingField: 1
+  <PlayerSpeedFactor>k__BackingField: 2

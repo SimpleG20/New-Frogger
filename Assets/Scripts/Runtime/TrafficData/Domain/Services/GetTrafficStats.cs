@@ -6,7 +6,12 @@ using NewFrogger.Traffic.Domain.Repositories;
 
 namespace NewFrogger.Traffic.Domain.Services
 {
-    public class GetTrafficStatsService : BaseServiceAsync<TrafficStatsModel, StatsArg>
+    public interface IGetTrafficStatsService
+    {
+        UniTask<TrafficStatsModel> call(StatsArg arg);
+    }
+
+    public class GetTrafficStatsService : BaseServiceAsync<TrafficStatsModel, StatsArg>, IGetTrafficStatsService
     {
         private readonly ITrafficRepository _trafficRepo;
 
