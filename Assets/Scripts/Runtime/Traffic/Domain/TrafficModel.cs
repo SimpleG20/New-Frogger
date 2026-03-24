@@ -33,17 +33,12 @@ namespace NewFrogger.Traffic.Domain
         private CancellationTokenSource _gameCTS;
         private CancellationToken _gameCT;
 
-        public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService, CancellationToken externalToken = default)
+        public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService)
         {
             _trafficLevelSettings = settings ?? throw new ArgumentNullException(nameof(settings));
             _trafficStatsService = trafficService ?? throw new ArgumentNullException(nameof(trafficService));
             
             _gameCTS = new CancellationTokenSource();
-            
-            if (externalToken != default)
-                _gameCT = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _gameCTS.Token).Token;
-            else
-                _gameCT = _gameCTS.Token;
             
             _isRunningLevel = false;
         }
@@ -53,7 +48,7 @@ namespace NewFrogger.Traffic.Domain
             return CurrentLevel < _trafficLevelSettings.MaxLevels;
         }
 
-        public async UniTaskVoid StartNewLevel()
+        public async UniTaskVoid StartNewLevel(CancellationToken externalToken = default)
         {
             if (_isRunningLevel)
             {
@@ -61,6 +56,11 @@ namespace NewFrogger.Traffic.Domain
                 return;
             }
             _isRunningLevel = true;
+
+            if (externalToken != default)
+                _gameCT = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _gameCTS.Token).Token;
+            else
+                _gameCT = _gameCTS.Token;
 
             try
             {
@@ -81,12 +81,11 @@ namespace NewFrogger.Traffic.Domain
                 _predictionCTS = CancellationTokenSource.CreateLinkedTokenSource(_gameCT);
 
                 _ = _timer.StartTimer(_gameCT);
-                _ = StartPrediction(_gameCT);
+                var task = StartPrediction(_gameCT);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Log.log(ex);
-                _isRunningLevel = false;
+                throw;
             }
         }
 
@@ -110,10 +109,14 @@ namespace NewFrogger.Traffic.Domain
 
                 OnGameEnded?.Invoke();
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) 
+            {
+                EndLevel();
+            }
             catch (Exception ex)
             {
                 Log.log(ex);
+                EndLevel();
             }
         }
 
@@ -139,8 +142,17 @@ namespace NewFrogger.Traffic.Domain
                 return;
             }
 
+            PartialClean();
+
+            OnStopLevel?.Invoke();
+        }
+
+        private void PartialClean()
+        {
             _timer?.Stop();
+            _timer.Dispose();
             _timer = null;
+
             CurrentTrafficSettings = default;
 
             _predictionCTS?.Cancel();
@@ -148,19 +160,17 @@ namespace NewFrogger.Traffic.Domain
             _predictionCTS = null;
 
             _isRunningLevel = false;
-
-            OnStopLevel?.Invoke();
         }
 
         public void Dispose()
         {
-            _predictionCTS?.Cancel();
-            _predictionCTS?.Dispose();
-            _predictionCTS = null;
+            PartialClean();
 
             _gameCTS?.Cancel();
             _gameCTS?.Dispose();
             _gameCTS = null;
+
+            CurrentLevel = 0;
         }
     }
 
@@ -209,5 +219,11 @@ namespace NewFrogger.Traffic.Domain
         public void Pause() => _paused = true;
         public void Resume() => _paused = false;
         public void Stop() => Running = false;
+
+        public void Dispose()
+        {
+            _onEnd = null;
+            OnCountdown = null;
+        }
     }
 }

@@ -47,8 +47,6 @@ namespace NewFrogger.Gameplay.Presentation
 
         public void Initialize()
         {
-            Log.SetLogger(new EditorLogger());
-
             _generalCTS = new CancellationTokenSource();
             _compositionRoot = new GameplayCompositionRoot(_apiBaseUrl);
 
@@ -65,7 +63,7 @@ namespace NewFrogger.Gameplay.Presentation
         }
         private void InitializeTraffic()
         {
-            _traffic = new TrafficModel(_gameplaySettingsSO, _compositionRoot.GetTrafficStatsService(), _generalCTS.Token);
+            _traffic = new TrafficModel(_gameplaySettingsSO, _compositionRoot.GetTrafficStatsService());
             _traffic.OnTrafficSettingsChanged += HandleOnTrafficSettingsChanged;
             _traffic.OnStartNewLevel += HandleOnTrafficStartNewLevel;
             _traffic.OnStopLevel += HandleOnTrafficStopLevel;
@@ -123,23 +121,36 @@ namespace NewFrogger.Gameplay.Presentation
 
         private void StartGameplay()
         {
+            _generalCTS = new CancellationTokenSource();
             _gameplayView.HideStartMenu();
             _gameplayView.ShowGameplayPanel();
             StartNewLevel();
         }
         private void StartNewLevel()
         {
-            _ = _traffic.StartNewLevel();
-            _player.SetActive(true);
-            _player.SetCanMove(true);
+            try
+            {
+                var start = _traffic.StartNewLevel(_generalCTS.Token);
+                _player.SetActive(true);
+                _player.SetCanMove(true);
+            }
+            catch(Exception ex)
+            {
+                Log.log(ex);
+                StopGameplay();
+            }
         }
         private void StopGameplay()
         {
             _generalCTS?.Cancel();
+
+            _player.SetActive(false);
+            _player.SetCanMove(false);
+
             _gameplayView.HideGameplayPanel();
             _gameplayView.ShowStartMenu();
         }
-        private async UniTask Victory()
+        private async UniTaskVoid Victory()
         {
             EndLevel();
 
