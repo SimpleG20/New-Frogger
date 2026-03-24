@@ -1,4 +1,4 @@
-namespace NewFrogger.Gameplay.Domain
+namespace NewFrogger.Traffic.Domain
 {
     public interface ITrafficLevelSettings
     {
