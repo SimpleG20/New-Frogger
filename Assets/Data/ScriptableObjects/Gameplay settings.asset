@@ -13,10 +13,12 @@ MonoBehaviour:
   m_Name: Gameplay settings
   m_EditorClassIdentifier: 
   <ReferenceSpeed>k__BackingField: 5
-  <ZLimit>k__BackingField: 10
-  <MinX>k__BackingField: -4.5
-  <MaxX>k__BackingField: 4.5
-  <MinZ>k__BackingField: 0
-  <MaxZ>k__BackingField: 10
+  <MaxLevels>k__BackingField: 3
+  <zVehicleLimit>k__BackingField: 10
+  <xVictory>k__BackingField: 7
+  <MinX>k__BackingField: -1
+  <MaxX>k__BackingField: 8
+  <MinZ>k__BackingField: -8
+  <MaxZ>k__BackingField: 8
   <GridMovementFactor>k__BackingField: 1
-  <PlayerSpeedFactor>k__BackingField: 2
+  <PlayerDelayFactor>k__BackingField: 2

@@ -1,10 +1,9 @@
 using System;
+using NewFrogger.Vehicle.Domain;
 using UnityEngine;
 
 namespace NewFrogger.Vehicle.Presentation
 {
-    using Vehicle.Domain;
-
     public class VehicleView : MonoBehaviour
     {
         public event Action<VehicleModel> OnLimitReached;

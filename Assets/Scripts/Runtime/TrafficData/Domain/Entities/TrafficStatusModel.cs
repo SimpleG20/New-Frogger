@@ -30,14 +30,5 @@ namespace NewFrogger.Traffic.Domain.Entities
                 weather: "sunny"
             );
         }
-
-        public static TrafficStatusModel FromDTO(Data.DTO.TrafficStatusDTO dto)
-        {
-            return new TrafficStatusModel(
-                vehicleDensity: dto.vehicleDensity,
-                averageSpeed: dto.averageSpeed,
-                weather: dto.weather
-            );
-        }
     }
 }

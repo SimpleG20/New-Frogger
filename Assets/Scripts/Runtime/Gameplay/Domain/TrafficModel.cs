@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
+
 using CustomLogger;
 using Cysharp.Threading.Tasks;
+
 using NewFrogger.Gameplay.Domain;
 using NewFrogger.Traffic.Domain.Services;
 using NewFrogger.Vehicle.Domain;
@@ -28,7 +30,7 @@ namespace NewFrogger.Gameplay.Domain
         private CancellationTokenSource _gameCTS;
         private CancellationToken _gameCT;
 
-        public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService)
+        public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService, int currentLevel = -1)
         {
             _trafficLevelSettings = settings ?? throw new ArgumentNullException(nameof(settings));
             _trafficStatsService = trafficService ?? throw new ArgumentNullException(nameof(trafficService));
@@ -36,6 +38,14 @@ namespace NewFrogger.Gameplay.Domain
             _gameCTS = new CancellationTokenSource();
             _gameCT = _gameCTS.Token;
             _isRunningLevel = false;
+
+            if (currentLevel != -1 && currentLevel < _trafficLevelSettings.MaxLevels) 
+                CurrentLevel = currentLevel;
+        }
+
+        public bool CanNextLevel()
+        {
+            return CurrentLevel <= _trafficLevelSettings.MaxLevels;
         }
 
         public async UniTaskVoid StartNewLevel()
@@ -54,7 +64,7 @@ namespace NewFrogger.Gameplay.Domain
                 CurrentLevel++;
 
                 var status = await _trafficStatsService.call(new StatsArg(CurrentLevel, _gameCT));
-                _levelData = new LevelData(_trafficLevelSettings.ReferenceSpeed, _trafficLevelSettings.ZLimit, status.CurrentStatus, status.PredictedStatus);
+                _levelData = new LevelData(_trafficLevelSettings.ReferenceSpeed, _trafficLevelSettings.zVehicleLimit, status.CurrentStatus, status.PredictedStatus);
 
                 OnStartNewLevel?.Invoke();
                 SetCurrentTrafficSettings(_predictionIndex);

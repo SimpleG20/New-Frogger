@@ -8,6 +8,7 @@ namespace NewFrogger.Traffic.Data.Repositories
     using Domain.Entities;
     using Domain.Repositories;
     using Data.Datasources;
+    using Data.Mappers;
     
     public class TrafficRepositoryImpl : ITrafficRepository
     {
@@ -23,7 +24,7 @@ namespace NewFrogger.Traffic.Data.Repositories
             try
             {
                 var dto = await _trafficDataSource.GetStats(level, ct);
-                return TrafficStatsModel.FromDTO(dto);
+                return dto.ToDomain();
             }
             catch (OperationCanceledException)
             {

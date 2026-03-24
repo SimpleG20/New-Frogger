@@ -153,8 +153,6 @@ namespace NewFrogger.Vehicle.Presentation
                     v.Value.OnLimitReached -= HandleOnLimitReached;
                 }
             }
-
-            _pool?.Dispose();
         }
     }
 }

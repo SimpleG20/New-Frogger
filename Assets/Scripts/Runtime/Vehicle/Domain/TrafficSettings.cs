@@ -1,5 +1,4 @@
 using NewFrogger.Traffic.Domain.Enums;
-using UnityEngine;
 
 namespace NewFrogger.Vehicle.Domain
 {
@@ -21,7 +20,8 @@ namespace NewFrogger.Vehicle.Domain
             ReferencedSpeed = referencedSpeed;
             VehicleDensity = vehicleDensity;
             
-            SpawnInterval = 1f / Mathf.Max(VehicleDensity, 0.05f);
+            float clampedDensity = vehicleDensity < 0.05f ? 0.05f : vehicleDensity;
+            SpawnInterval = 1f / clampedDensity;
         }
     }
 }

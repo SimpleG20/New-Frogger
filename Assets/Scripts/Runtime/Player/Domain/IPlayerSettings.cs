@@ -2,7 +2,7 @@ namespace NewFrogger.Player.Domain
 {
     public interface IPlayerSettings
     {
-        float PlayerSpeedFactor { get; }
+        float PlayerDelayFactor { get; }
         float GridMovementFactor { get; }
         float MinX { get; }
         float MaxX { get; }

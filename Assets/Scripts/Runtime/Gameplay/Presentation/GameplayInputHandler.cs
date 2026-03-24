@@ -1,5 +1,4 @@
 using NewFrogger.Player.Domain;
-using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace NewFrogger.Gameplay.Presentation
@@ -19,7 +18,8 @@ namespace NewFrogger.Gameplay.Presentation
 
         private void HandleOnMovement(InputAction.CallbackContext ctx)
         {
-            _player.Move(ctx.ReadValue<Vector2>());
+            var direction = ctx.ReadValue<UnityEngine.Vector2>();
+            _player.Move(direction);
         }
 
         public void Dispose()

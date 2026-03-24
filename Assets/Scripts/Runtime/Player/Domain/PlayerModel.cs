@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+
 using NewFrogger.Core.Domain;
 using NewFrogger.Traffic.Domain.Enums;
 
@@ -9,11 +10,12 @@ namespace NewFrogger.Player.Domain
     {
         public event Action<bool> OnActiveChanged;
         public event Action<float> OnSpeedChanged;
-        public event Action<float, Vector3> OnMovement;
+        public event Action<float, Vector3> OnPositionChanged;
 
+        public Vector3 Position => _position;
         public bool Active { get; private set; }
 
-        private float _speedFactor;
+        private float _delayFactor;
         private float _speedFactorRelatedToWeather;
         private float _gridMovementFactor;
         private float _timeGap;
@@ -23,17 +25,20 @@ namespace NewFrogger.Player.Domain
         private Tuple<float, float> _limitsZ;
         
         private Vector3 _position;
+        private readonly Vector3 _initialPos;
         private readonly ITimeProvider _timeProvider;
 
         public PlayerModel(Vector3 initialPosition, IPlayerSettings settings, ITimeProvider timeProvider)
         {
+            _initialPos = initialPosition;
             _position = initialPosition;
+
             _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
             
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
             _speedFactorRelatedToWeather = 1;
-            _speedFactor = settings.PlayerSpeedFactor;
+            _delayFactor = settings.PlayerDelayFactor;
             _gridMovementFactor = settings.GridMovementFactor;
             _lastTimeMoved = _timeProvider.Time;
             _limitsX = new Tuple<float, float>(settings.MinX, settings.MaxX);
@@ -56,13 +61,18 @@ namespace NewFrogger.Player.Domain
 
             const float BaseTimeGap = 0.5f;
 
-            _timeGap = BaseTimeGap + (_speedFactor * (1 - _speedFactorRelatedToWeather));
+            _timeGap = BaseTimeGap + (_delayFactor * (1 - _speedFactorRelatedToWeather));
             _lastTimeMoved = _timeProvider.Time;
 
-            _position.x = Mathf.Clamp(_position.x + (direction.y * _gridMovementFactor), _limitsX.Item1, _limitsX.Item2);
-            _position.z = Mathf.Clamp(_position.z + (-direction.x * _gridMovementFactor), _limitsZ.Item1, _limitsZ.Item2);
+            float newX = _position.x + (direction.y * _gridMovementFactor);
+            float newZ = _position.z + (-direction.x * _gridMovementFactor);
+            _position = new Vector3(
+                Math.Clamp(newX, _limitsX.Item1, _limitsX.Item2),
+                _position.y,
+                Math.Clamp(newZ, _limitsZ.Item1, _limitsZ.Item2)
+            );
 
-            OnMovement?.Invoke(_timeGap, _position);
+            OnPositionChanged?.Invoke(_timeGap, _position);
         }
 
         private bool IsMovementValid(Vector2 direction)
@@ -91,6 +101,13 @@ namespace NewFrogger.Player.Domain
             };
 
             OnSpeedChanged?.Invoke(_speedFactorRelatedToWeather);
+        }
+
+        public void Reset()
+        {
+            _position = _initialPos;
+            OnPositionChanged?.Invoke(0, _position);
+            SetActive(false);
         }
     }
 }
