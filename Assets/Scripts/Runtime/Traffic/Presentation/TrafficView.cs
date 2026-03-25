@@ -14,8 +14,6 @@ namespace NewFrogger.Traffic.Presentation
 {
     public class TrafficView : MonoBehaviour
     {
-        public event Action OnPanelHid;
-
         [SerializeField] private GameObject _root;
         [SerializeField] private GameObject _trafficChangedPanel;
 
@@ -24,17 +22,20 @@ namespace NewFrogger.Traffic.Presentation
         [SerializeField] private TMP_Text _levelTx;
         [SerializeField] private TMP_Text _timeTx;
 
-
-        private CancellationTokenSource _cts;
-
-        public void Initialize(TrafficModel traffic)
+        public void Initialize()
         {
-            traffic.OnTrafficSettingsChanged += HandleOnTrafficSettingsChanged;
-            traffic.OnStartNewLevel += HandleOnStartNewLevel;
-            traffic.OnStopLevel += HandleOnStopLevel;
-            traffic.OnCountdownChanged += HandleOnCountdownChanged;
-
             ResetView();
+        }
+
+        public void StartLevel(int level, int time)
+        {
+            _root.SetActive(true);
+            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_velocityAvgTx.text));
+            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
+
+            _levelTx.text = level.ToString();
+            _timeTx.text = time.ToString();
+            _levelTx.gameObject.SetActive(true);
         }
 
         public void ResetView()
@@ -46,58 +47,31 @@ namespace NewFrogger.Traffic.Presentation
             _root.SetActive(false);
         }
 
-        private void HandleOnCountdownChanged(int time)
+        public void UpdateCountdown(int time) => _timeTx.text = time.ToString();
+        public void UpdateLevel(int v) => _levelTx.text = v.ToString();
+        public void UpdateTrafficSettings(TrafficSettings settings)
         {
-            _timeTx.text = time.ToString();
-        }
-
-        private void HandleOnStopLevel()
-        {
-            _cts?.Cancel();
-            ResetView();
-        }
-
-        private void HandleOnStartNewLevel(int level, int time)
-        {
-            _root.SetActive(true);
+            _velocityAvgTx.text = settings.AverageSpeed.ToString();
             _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_velocityAvgTx.text));
-            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
 
-            _levelTx.text = level.ToString();
-            _timeTx.text = time.ToString();
-            _levelTx.gameObject.SetActive(true);
+            _weatherTx.text = settings.Weather.ToString();
+            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
         }
 
-        private void HandleOnTrafficSettingsChanged(TrafficSettings obj)
+        public async UniTask ShowTrafficUpdateWarning(CancellationToken ct)
         {
             _trafficChangedPanel.SetActive(true);
-
-            _velocityAvgTx.text = obj.AverageSpeed.ToString();
-            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_velocityAvgTx.text));
-
-            _weatherTx.text = obj.Weather.ToString();
-            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
-
-            _cts = new CancellationTokenSource();
-            _ = UniTask.Delay(TimeSpan.FromSeconds(3), cancellationToken: _cts.Token).ContinueWith(() =>
-            {
-                _trafficChangedPanel.SetActive(false);
-                OnPanelHid?.Invoke();
-            });
+            await UniTask.Delay(TimeSpan.FromSeconds(2), cancellationToken: ct);
+            _trafficChangedPanel.SetActive(false);
         }
 
-        public void Dispose()
+        public void EndLevel()
         {
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
-
             ResetView();
         }
 
         private void OnDestroy()
         {
-            Dispose();
         }
     }
 }

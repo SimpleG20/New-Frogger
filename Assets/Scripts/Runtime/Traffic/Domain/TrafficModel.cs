@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 
 using CustomLogger;
@@ -12,114 +13,155 @@ namespace NewFrogger.Traffic.Domain
 {
     public class TrafficModel : IDisposable
     {
-        public event Action OnGameEnded;
-        public event Action OnStopLevel;
-        public event Action<int, int> OnStartNewLevel;
         public event Action<int> OnCountdownChanged;
         public event Action<TrafficSettings> OnTrafficSettingsChanged;
+
+        public Timer Timer => _timer;
 
         public int CurrentLevel { get; private set; }
         public TrafficSettings CurrentTrafficSettings { get; private set; }
 
         private int _predictionIndex;
-        private bool _isRunningLevel;
 
         private Timer _timer;
         private LevelData _levelData;
+        private List<VehicleModel> _activeVehicles;
         private readonly IGetTrafficStatsService _trafficStatsService;
         private readonly ITrafficLevelSettings _trafficLevelSettings;
         
         private CancellationTokenSource _predictionCTS;
-        private CancellationTokenSource _gameCTS;
         private CancellationToken _gameCT;
 
         public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService)
         {
             _trafficLevelSettings = settings ?? throw new ArgumentNullException(nameof(settings));
             _trafficStatsService = trafficService ?? throw new ArgumentNullException(nameof(trafficService));
-            
-            _gameCTS = new CancellationTokenSource();
-            
-            _isRunningLevel = false;
+
+            _activeVehicles = new();
+            CurrentLevel = 1;
         }
 
-        public bool CanNextLevel()
-        {
-            return CurrentLevel < _trafficLevelSettings.MaxLevels;
-        }
+        public bool CanNextLevel() => CurrentLevel < _trafficLevelSettings.MaxLevels;
+        public int IncreaseLevel() => CurrentLevel = CurrentLevel + 1;
 
-        public async UniTaskVoid StartNewLevel(CancellationToken externalToken = default)
+        #region Vehicles
+        public bool TryGetActiveVehicles(out List<VehicleModel> activeVehicles)
         {
-            if (_isRunningLevel)
+            if (_activeVehicles != null && _activeVehicles.Count > 0)
             {
-                Log.log("Level is running, please end the level, before start a new one");
+                activeVehicles = new List<VehicleModel>(_activeVehicles);
+                return true;
+            }
+
+            activeVehicles = null;
+            return false;
+        }
+        public void RegistryVehicle(VehicleModel vehicle)
+        {
+            if (vehicle == null) return;
+            if (_activeVehicles.Contains(vehicle))
+            {
+                Log.log("Trying to add a vehicle already in");
                 return;
             }
-            _isRunningLevel = true;
+            vehicle.SetActive(true);
+            _activeVehicles.Add(vehicle);
+        }
+        public void UnregisterVehicle(VehicleModel vehicle)
+        {
+            if (_activeVehicles.Contains(vehicle))
+            {
+                vehicle.SetActive(false);
+                _activeVehicles.Remove(vehicle);
+            }
+        }
+        #endregion
 
-            if (externalToken != default)
-                _gameCT = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _gameCTS.Token).Token;
-            else
-                _gameCT = _gameCTS.Token;
+        #region Gameplay
+        public void StartGameplay()
+        {
+            CurrentLevel = 1;
+        }
+        public void PauseGameplay()
+        {
+            foreach (var vehicle in _activeVehicles)
+            {
+                vehicle.SetCanMove(false);
+            }
+        }
+        public void ResumeGameplay()
+        {
+            foreach(var vehicle in _activeVehicles)
+            {
+                vehicle.SetCanMove(true);
+            }
+        }
 
+        #region Level
+        public async UniTask StartNewLevel(CancellationToken externalToken)
+        {
             try
             {
-                _predictionIndex = 0;
+                SetVariablesToStartNewLevel(externalToken);
 
-                CurrentLevel++;
+                await FetchTrafficStatus();
 
-                var status = await _trafficStatsService.call(new StatsArg(CurrentLevel, _gameCT));
-                _levelData = new LevelData(_trafficLevelSettings.ReferenceSpeed, _trafficLevelSettings.zVehicleLimit, status.CurrentStatus, status.PredictedStatus);
-
-                int time = _levelData.MaxTime / 1000;
-                _timer = new Timer(time);
-                _timer.OnCountdown += HandleOnCountdown;
-
-                OnStartNewLevel?.Invoke(CurrentLevel, time);
                 SetCurrentTrafficSettings(_predictionIndex);
 
-                _predictionCTS = CancellationTokenSource.CreateLinkedTokenSource(_gameCT);
-
-                _ = _timer.StartTimer(_gameCT);
-                var task = StartPrediction(_gameCT);
+                StartTimer();
+                var task = StartPrediction();
             }
             catch (Exception)
             {
                 throw;
             }
         }
-
+        private void SetVariablesToStartNewLevel(CancellationToken externalToken)
+        {
+            _predictionCTS = new();
+            _gameCT = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _predictionCTS.Token).Token;
+            _predictionIndex = 0;
+        }
+        private async UniTask FetchTrafficStatus()
+        {
+            var status = await _trafficStatsService.call(new StatsArg(CurrentLevel, _gameCT));
+            _levelData = new LevelData(_trafficLevelSettings.ReferenceSpeed, _trafficLevelSettings.zVehicleLimit, status.CurrentStatus, status.PredictedStatus);
+        }
+        private void StartTimer()
+        {
+            int time = _levelData.MaxTime / 1000;
+            _timer = new Timer(time);
+            _timer.OnCountdown += HandleOnCountdown;
+            _ = _timer.StartTimer(_gameCT);
+        }
         private void HandleOnCountdown(int time)
         {
             OnCountdownChanged?.Invoke(time);
         }
 
-        private async UniTask StartPrediction(CancellationToken ct)
+        private async UniTask StartPrediction()
         {
             try
             {
-                while (!ct.IsCancellationRequested && NextPrediction())
+                var predictionToken = _predictionCTS.Token;
+
+                while (!predictionToken.IsCancellationRequested && NextPrediction())
                 {
                     var estimatedTime = _levelData.TrafficSettings[_predictionIndex].EstimatedTime;
 
-                    await UniTask.Delay(TimeSpan.FromMilliseconds(estimatedTime), cancellationToken: _predictionCTS.Token);
+                    await UniTask.Delay(TimeSpan.FromMilliseconds(estimatedTime), cancellationToken: predictionToken);
 
                     SetCurrentTrafficSettings(_predictionIndex);
                 }
-
-                OnGameEnded?.Invoke();
             }
             catch (OperationCanceledException) 
             {
-                EndLevel();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Log.log(ex);
-                EndLevel();
+                throw;
             }
         }
-
         private bool NextPrediction()
         {
             if (_levelData.Equals(default)) return false;
@@ -127,103 +169,45 @@ namespace NewFrogger.Traffic.Domain
             _predictionIndex++;
             return _predictionIndex < _levelData.TrafficSettings.Length;
         }
-
         private void SetCurrentTrafficSettings(int index)
         {
             CurrentTrafficSettings = _levelData.TrafficSettings[index].Settings;
+
+            foreach (var vehicle in _activeVehicles)
+            {
+                vehicle.ChangeSpeed(CurrentTrafficSettings.AverageSpeed);
+            }
+
             OnTrafficSettingsChanged?.Invoke(CurrentTrafficSettings);
         }
 
         public void EndLevel()
         {
-            if (!_isRunningLevel)
-            {
-                Log.log("Trying to end the level but it is not even running");
-                return;
-            }
-
             PartialClean();
-
-            OnStopLevel?.Invoke();
         }
 
         private void PartialClean()
         {
             _timer?.Stop();
-            _timer.Dispose();
+            _timer?.Dispose();
             _timer = null;
-
-            CurrentTrafficSettings = default;
 
             _predictionCTS?.Cancel();
             _predictionCTS?.Dispose();
             _predictionCTS = null;
 
-            _isRunningLevel = false;
+            CurrentTrafficSettings = default;
         }
+        #endregion
+
+        #endregion
 
         public void Dispose()
         {
             PartialClean();
 
-            _gameCTS?.Cancel();
-            _gameCTS?.Dispose();
-            _gameCTS = null;
-
-            CurrentLevel = 0;
-        }
-    }
-
-    public class Timer
-    {
-        public event Action<int> OnCountdown;
-        public int TimeInSecs { get; private set; }
-        public bool Running { get; private set; }
-
-        private bool _paused;
-        private Action _onEnd;
-
-        public Timer(int time, Action onEnd = default) 
-        {
-            TimeInSecs = time; 
-            _onEnd = onEnd;
-        }
-
-        public async UniTask StartTimer(CancellationToken ct)
-        {
-            if (Running) return;
-            Running = true;
-
-            try
-            {
-                while (Running && TimeInSecs > 0)
-                {
-                    if (_paused)
-                    {
-                        await UniTask.Yield();
-                        continue;
-                    }
-                    await UniTask.Delay(1000, cancellationToken: ct);
-                    TimeInSecs--;
-                    OnCountdown?.Invoke(TimeInSecs);
-                }
-
-                _onEnd?.Invoke();
-            }
-            finally
-            {
-                Running = false;
-            }
-        }
-
-        public void Pause() => _paused = true;
-        public void Resume() => _paused = false;
-        public void Stop() => Running = false;
-
-        public void Dispose()
-        {
-            _onEnd = null;
-            OnCountdown = null;
+            OnCountdownChanged = null;
+            OnTrafficSettingsChanged = null;
         }
     }
 }
