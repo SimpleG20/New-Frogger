@@ -12,8 +12,10 @@ namespace NewFrogger.Gameplay.Domain
 {
     public class TrafficModel : IDisposable
     {
-        public event Action OnStartNewLevel;
+        public event Action OnGameEnded;
         public event Action OnStopLevel;
+        public event Action<int, int> OnStartNewLevel;
+        public event Action<int> OnCountdownChanged;
         public event Action<TrafficSettings> OnTrafficSettingsChanged;
 
         public int CurrentLevel { get; private set; }
@@ -22,6 +24,7 @@ namespace NewFrogger.Gameplay.Domain
         private int _predictionIndex;
         private bool _isRunningLevel;
 
+        private Timer _timer;
         private LevelData _levelData;
         private readonly IGetTrafficStatsService _trafficStatsService;
         private readonly ITrafficLevelSettings _trafficLevelSettings;
@@ -30,22 +33,24 @@ namespace NewFrogger.Gameplay.Domain
         private CancellationTokenSource _gameCTS;
         private CancellationToken _gameCT;
 
-        public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService, int currentLevel = -1)
+        public TrafficModel(ITrafficLevelSettings settings, IGetTrafficStatsService trafficService, CancellationToken externalToken = default)
         {
             _trafficLevelSettings = settings ?? throw new ArgumentNullException(nameof(settings));
             _trafficStatsService = trafficService ?? throw new ArgumentNullException(nameof(trafficService));
             
             _gameCTS = new CancellationTokenSource();
-            _gameCT = _gameCTS.Token;
+            
+            if (externalToken != default)
+                _gameCT = CancellationTokenSource.CreateLinkedTokenSource(externalToken, _gameCTS.Token).Token;
+            else
+                _gameCT = _gameCTS.Token;
+            
             _isRunningLevel = false;
-
-            if (currentLevel != -1 && currentLevel < _trafficLevelSettings.MaxLevels) 
-                CurrentLevel = currentLevel;
         }
 
         public bool CanNextLevel()
         {
-            return CurrentLevel <= _trafficLevelSettings.MaxLevels;
+            return CurrentLevel < _trafficLevelSettings.MaxLevels;
         }
 
         public async UniTaskVoid StartNewLevel()
@@ -66,11 +71,17 @@ namespace NewFrogger.Gameplay.Domain
                 var status = await _trafficStatsService.call(new StatsArg(CurrentLevel, _gameCT));
                 _levelData = new LevelData(_trafficLevelSettings.ReferenceSpeed, _trafficLevelSettings.zVehicleLimit, status.CurrentStatus, status.PredictedStatus);
 
-                OnStartNewLevel?.Invoke();
+                int time = _levelData.MaxTime / 1000;
+                _timer = new Timer(time);
+                _timer.OnCountdown += HandleOnCountdown;
+
+                OnStartNewLevel?.Invoke(CurrentLevel, time);
                 SetCurrentTrafficSettings(_predictionIndex);
 
-                _predictionCTS = new CancellationTokenSource();
-                _ = StartPrediction();
+                _predictionCTS = CancellationTokenSource.CreateLinkedTokenSource(_gameCT);
+
+                _ = _timer.StartTimer(_gameCT);
+                _ = StartPrediction(_gameCT);
             }
             catch (Exception ex)
             {
@@ -79,11 +90,16 @@ namespace NewFrogger.Gameplay.Domain
             }
         }
 
-        private async UniTask StartPrediction()
+        private void HandleOnCountdown(int time)
+        {
+            OnCountdownChanged?.Invoke(time);
+        }
+
+        private async UniTask StartPrediction(CancellationToken ct)
         {
             try
             {
-                while (_predictionCTS != null && !_predictionCTS.Token.IsCancellationRequested && NextPrediction())
+                while (!ct.IsCancellationRequested && NextPrediction())
                 {
                     var estimatedTime = _levelData.TrafficSettings[_predictionIndex].EstimatedTime;
 
@@ -92,7 +108,7 @@ namespace NewFrogger.Gameplay.Domain
                     SetCurrentTrafficSettings(_predictionIndex);
                 }
 
-                EndLevel();
+                OnGameEnded?.Invoke();
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
@@ -123,6 +139,8 @@ namespace NewFrogger.Gameplay.Domain
                 return;
             }
 
+            _timer?.Stop();
+            _timer = null;
             CurrentTrafficSettings = default;
 
             _predictionCTS?.Cancel();
@@ -144,5 +162,52 @@ namespace NewFrogger.Gameplay.Domain
             _gameCTS?.Dispose();
             _gameCTS = null;
         }
+    }
+
+    public class Timer
+    {
+        public event Action<int> OnCountdown;
+        public int TimeInSecs { get; private set; }
+        public bool Running { get; private set; }
+
+        private bool _paused;
+        private Action _onEnd;
+
+        public Timer(int time, Action onEnd = default) 
+        {
+            TimeInSecs = time; 
+            _onEnd = onEnd;
+        }
+
+        public async UniTask StartTimer(CancellationToken ct)
+        {
+            if (Running) return;
+            Running = true;
+
+            try
+            {
+                while (Running && TimeInSecs > 0)
+                {
+                    if (_paused)
+                    {
+                        await UniTask.Yield();
+                        continue;
+                    }
+                    await UniTask.Delay(1000, cancellationToken: ct);
+                    TimeInSecs--;
+                    OnCountdown?.Invoke(TimeInSecs);
+                }
+
+                _onEnd?.Invoke();
+            }
+            finally
+            {
+                Running = false;
+            }
+        }
+
+        public void Pause() => _paused = true;
+        public void Resume() => _paused = false;
+        public void Stop() => Running = false;
     }
 }
