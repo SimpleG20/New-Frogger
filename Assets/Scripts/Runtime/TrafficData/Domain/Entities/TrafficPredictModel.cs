@@ -14,13 +14,5 @@ namespace NewFrogger.Traffic.Domain.Entities
             EstimatedTime = estimatedTime;
             Status = status;
         }
-
-        public static TrafficPredictModel FromDTO(Data.DTO.TrafficPredictDTO dto)
-        {
-            return new TrafficPredictModel(
-                estimatedTime: dto.estimated_time,
-                status: TrafficStatusModel.FromDTO(dto.status)
-            );
-        }
     }
 }

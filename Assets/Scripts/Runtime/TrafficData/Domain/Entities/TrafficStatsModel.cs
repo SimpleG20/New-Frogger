@@ -21,21 +21,5 @@ namespace NewFrogger.Traffic.Domain.Entities
                 predicteds: Array.Empty<TrafficPredictModel>()
             );
         }
-
-        public static TrafficStatsModel FromDTO(Data.DTO.TrafficStatsDTO dto)
-        {
-            var current = TrafficStatusModel.FromDTO(dto.current_status);
-            var predicteds = Array.ConvertAll(dto.predicted_status, p => TrafficPredictModel.FromDTO(p));
-            
-            for (int i = 0; i < dto.predicted_status.Length; i++)
-            {
-                predicteds[i] = TrafficPredictModel.FromDTO(dto.predicted_status[i]);
-            }
-            
-            return new TrafficStatsModel(
-                current,
-                predicteds
-            );
-        }
     }
 }
