@@ -1,4 +1,3 @@
-
 using System;
 
 namespace NewFrogger.Traffic.Domain.Entities

@@ -3,12 +3,13 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using CustomLogger;
 
+using NewFrogger.Traffic.Domain.Entities;
+using NewFrogger.Traffic.Domain.Repositories;
+using NewFrogger.Traffic.Data.Datasources;
+using NewFrogger.Traffic.Data.Mappers;
+
 namespace NewFrogger.Traffic.Data.Repositories
 {
-    using Domain.Entities;
-    using Domain.Repositories;
-    using Data.Datasources;
-    using Data.Mappers;
     
     public class TrafficRepositoryImpl : ITrafficRepository
     {
