@@ -8,8 +8,8 @@ using NewFrogger.Traffic.Data.Repositories;
 using NewFrogger.Traffic.Data.Datasources;
 using NewFrogger.Gameplay.Data;
 using NewFrogger.Vehicle.Domain;
-using NewFrogger.Gameplay.Domain;
 using NewFrogger.Vehicle.Presentation;
+using CustomLogger;
 
 namespace NewFrogger.Test
 {
@@ -19,10 +19,7 @@ namespace NewFrogger.Test
         public GameplaySettingsSO settingsSO;
         
         [Header("Scene References")]
-        public VehicleObject vehicleView;
-        
-        private VehicleModel m_vehicleModel;
-        private GameplaySettings m_gameplaySettings;
+        public TrafficSpawner spawner;
 
         public async void Start()
         {
@@ -38,21 +35,15 @@ namespace NewFrogger.Test
 
         private async UniTask InitializeAsync()
         {
-            m_gameplaySettings = new GameplaySettings(settingsSO);
-
             var stats = await GetAPIStats();
+            var currentStats = stats.CurrentStatus;
 
-            m_vehicleModel = new VehicleModel(
-                stats.CurrentStatus.AverageSpeed, 
-                m_gameplaySettings.ReferenceSpeed
-            );
-
-            vehicleView.Initialize(m_vehicleModel, m_gameplaySettings.ZLimit);
-            vehicleView.OnLimitReached += HandleOnVehicleLimitReached;
+            var trafficSettings = new TrafficSettings(currentStats.VehicleDensity, currentStats.AverageSpeed, settingsSO.ReferenceSpeed, settingsSO.ZLimit);
+            spawner.Initialize(trafficSettings, 10);
 
             await UniTask.Delay(3000);
-            Debug.Log("[TestVehicle] Simulation Started");
-            m_vehicleModel.SetActive(true);
+            Log.log("[TestVehicle] Simulation Started");
+            spawner.StartSpawning();
         }
 
         private async UniTask<TrafficStatsModel> GetAPIStats()
@@ -62,19 +53,6 @@ namespace NewFrogger.Test
             var useCase = new GetTrafficStatsService(repo);
 
             return await useCase.call();
-        }
-
-        private void HandleOnVehicleLimitReached(VehicleModel model)
-        {
-            model.SetActive(false);
-        }
-        
-        private void OnDestroy()
-        {
-            if (vehicleView != null)
-            {
-                vehicleView.OnLimitReached -= HandleOnVehicleLimitReached;
-            }
         }
     }
 }
