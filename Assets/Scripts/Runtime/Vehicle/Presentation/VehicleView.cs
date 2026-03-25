@@ -1,6 +1,6 @@
 using System;
-using NewFrogger.Vehicle.Domain;
 using UnityEngine;
+using NewFrogger.Vehicle.Domain;
 
 namespace NewFrogger.Vehicle.Presentation
 {
