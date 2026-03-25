@@ -1,5 +1,5 @@
-using NewFrogger.Player.Domain;
 using UnityEngine.InputSystem;
+using NewFrogger.Player.Domain;
 
 namespace NewFrogger.Gameplay.Presentation
 {

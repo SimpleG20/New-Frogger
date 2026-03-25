@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -15,7 +14,8 @@ namespace NewFrogger.Traffic.Presentation
 {
     public class TrafficController : MonoBehaviour
     {
-        public event Action<TrafficSettings> OnTrafficSettingsChanged;
+        public event Action OnLevelTimerEnded;
+        public event Action OnChangeTrafficSettings;
 
         [SerializeField] private TrafficSpawner _spawner;
         [SerializeField] private TrafficView _view;
@@ -26,7 +26,6 @@ namespace NewFrogger.Traffic.Presentation
         public void Initialize(TrafficModel model)
         {
             _model = model;
-            _model.OnTrafficSettingsChanged += PublishOnTrafficSettingsChanged;
 
             const int maxVehicles = 10;
             _spawner.Initialize(maxVehicles);
@@ -34,22 +33,22 @@ namespace NewFrogger.Traffic.Presentation
             _spawner.OnRelease += HandleOnRelease;
 
             _view.Initialize();
+
+            _model.OnLevelTimerEnded += PublishOnLevelTimerEnded;
+            _model.OnChangeTrafficSettings += PublishOnChangeTrafficSettings;
             _model.OnPredictionCountdownChanged += _view.UpdatePredictionCountdown;
-            _model.OnLevelCountdownChanged += HandleOnLevelCountdown;
         }
 
-        private void PublishOnTrafficSettingsChanged(TrafficSettings newSettings)
+        private void PublishOnChangeTrafficSettings()
         {
-            OnTrafficSettingsChanged?.Invoke(newSettings);
+            OnChangeTrafficSettings?.Invoke();
         }
-        public async UniTask ShowChangeTrafficSettings(CancellationToken token)
+        private void PublishOnLevelTimerEnded()
         {
-            var newSettings = _model.CurrentTrafficSettings;
-            _spawner.UpdateTrafficSettings(newSettings);
-            _view.UpdateTrafficSettings(newSettings);
-            await _view.ShowTrafficUpdateWarning(token);
+            OnLevelTimerEnded?.Invoke();
         }
 
+        #region Handle Events
         private void HandleOnSpawn(VehicleView vehicle)
         {
             vehicle.OnLimitReached += HandleOnLimitReached;
@@ -57,7 +56,8 @@ namespace NewFrogger.Traffic.Presentation
             if (_model.TryRegistryVehicle(vehicleModel))
             {
                 _vehicleModelToView[vehicleModel] = vehicle;
-                vehicleModel.SetCanMove(true);
+                vehicleModel.ChangeSpeed(_model.CurrentTrafficSettings.AverageSpeed);
+                vehicleModel.SetCanMove(!_model.Paused);
             }
         }
         private void HandleOnRelease(VehicleView vehicle)
@@ -73,15 +73,54 @@ namespace NewFrogger.Traffic.Presentation
         {
             _spawner.Release(vehicle);
         }
-        private void HandleOnLevelCountdown(int time)
-        {
-            if (time == 0) EndGameplay();
-        }
+        #endregion
 
+        #region Gameplay
         public void StartGameplay(CancellationToken token)
         {
             _model.StartGameplay();
             _ = StartLevel(token);
+        }
+        public void PauseGameplay()
+        {
+            _model.PauseGameplay();
+            _spawner.PauseSpawning();
+        }
+        public void ResumeGameplay()
+        {
+            _model.ResumeGameplay();
+            _spawner.ResumeSpawning();
+        }
+        public void EndGameplay()
+        {
+            _view.ResetView();
+            _spawner.StopSpawning();
+            _model.EndGameplay();
+            ReturnVehiclesToPool();
+        }
+        #endregion
+
+        #region Level
+        public bool HasNextLevel() => _model.CanNextLevel();
+        public void IncreaseLevel() => _view.UpdateLevel(_model.IncreaseLevel());
+        public async UniTask<TrafficSettings> ChangeTrafficSettings(CancellationToken token)
+        {
+            var newSettings = _model.SetNextTrafficSettings();
+            if (newSettings.Equals(default))
+            {
+                return default;
+            }
+
+            _spawner.UpdateTrafficSettings(newSettings);
+            if (_model.TryGetActiveVehicles(out var vehicles))
+            {
+                foreach (var v in vehicles) v.ChangeSpeed(newSettings.AverageSpeed);
+            }
+            _view.UpdateTrafficSettings(newSettings);
+
+            await _view.TimedShowTrafficUpdateWarning(seconds: 2, token);
+            
+            return newSettings;
         }
         public async UniTask StartLevel(CancellationToken ct)
         {
@@ -97,8 +136,6 @@ namespace NewFrogger.Traffic.Presentation
                 EndGameplay();
             }
         }
-        public bool HasNextLevel() => _model.CanNextLevel();
-        public void IncreaseLevel() => _view.UpdateLevel(_model.IncreaseLevel());
         public void EndLevel()
         {
             _spawner.StopSpawning();
@@ -119,27 +156,12 @@ namespace NewFrogger.Traffic.Presentation
                 }
             }
         }
-
-        public void PauseGameplay()
-        {
-            _model.PauseGameplay();
-            _spawner.PauseSpawning();
-        }
-        public void ResumeGameplay()
-        {
-            _model.ResumeGameplay();
-            _spawner.ResumeSpawning();
-        }
-        public void EndGameplay()
-        {
-            _spawner.StopSpawning();
-            _model.EndGameplay();
-            ReturnVehiclesToPool();
-        }
+        #endregion
 
         private void OnDestroy()
         {
-            OnTrafficSettingsChanged = null;
+            OnLevelTimerEnded = null;
+            OnChangeTrafficSettings = null;
 
             _model?.Dispose();
             _spawner?.Dispose();

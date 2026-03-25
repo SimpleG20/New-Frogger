@@ -19,14 +19,14 @@ namespace NewFrogger.Gameplay.Presentation
         [SerializeField] private GameplaySettingsSO _gameplaySettingsSO;
         [SerializeField] private GameplayView _gameplayView;
 
-        [Header("Lifecycle")]
-        [SerializeField] private GameplayLifecycle _lifecycle;
+        [Header("Controllers")]
         [SerializeField] private PlayerController _playerController;
         [SerializeField] private TrafficController _trafficController;
 
         [Header("Player")]
         [SerializeField] private PlayerInput _input;
 
+        private GameplayLifecycle _lifecycle;
         private GameplayInputHandler _gameplayInput;
         private GameplayCompositionRoot _compositionRoot;
 
@@ -65,6 +65,10 @@ namespace NewFrogger.Gameplay.Presentation
         {
             _generalCTS?.Cancel();
             _generalCTS?.Dispose();
+
+            _lifecycle?.Dispose();
+            _gameplayInput?.Dispose();
+            _compositionRoot?.Dispose();
         }
     }
 }

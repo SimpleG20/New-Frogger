@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using CustomLogger;
 using Cysharp.Threading.Tasks;
 
 namespace NewFrogger.Core.Data
@@ -29,14 +30,17 @@ namespace NewFrogger.Core.Data
             {
                 while (Running && TimeInSecs > 0)
                 {
-                    if (_paused)
+                    if (!_paused)
+                    {
+                        await UniTask.Delay(1000, cancellationToken: ct);
+                        TimeInSecs--;
+                        Log.log(TimeInSecs);
+                        OnCountdown?.Invoke(TimeInSecs);
+                    }
+                    else
                     {
                         await UniTask.Yield();
-                        continue;
                     }
-                    await UniTask.Delay(1000, cancellationToken: ct);
-                    TimeInSecs--;
-                    OnCountdown?.Invoke(TimeInSecs);
                 }
 
                 _onEnd?.Invoke();

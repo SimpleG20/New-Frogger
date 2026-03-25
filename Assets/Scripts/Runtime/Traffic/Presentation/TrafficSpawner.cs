@@ -43,7 +43,7 @@ namespace NewFrogger.Traffic.Presentation
         private VehicleView CreateVehicle()
         {
             var vehicle = UnityEngine.Object.Instantiate(_vehiclePrefab, _vehicleParent);
-            var model = new VehicleModel(_currentSettings.AverageSpeed, _currentSettings.ReferencedSpeed);
+            var model = new VehicleModel(_currentSettings.ReferencedSpeed);
             vehicle.Initialize(model, _currentSettings.zLimit);
 
             return vehicle;
@@ -86,15 +86,16 @@ namespace NewFrogger.Traffic.Presentation
             {
                 while (_spawnCTS != null && !_spawnCTS.Token.IsCancellationRequested)
                 {
-                    if (_paused)
+                    if (!_paused)
+                    {
+                        await UniTask.Delay(TimeSpan.FromSeconds(_currentSettings.SpawnInterval), cancellationToken: _spawnCTS.Token);
+
+                        _pool.Get();
+                    }
+                    else
                     {
                         await UniTask.Yield();
-                        continue;
                     }
-
-                    await UniTask.Delay(TimeSpan.FromSeconds(_currentSettings.SpawnInterval), cancellationToken: _spawnCTS.Token);
-
-                    _pool.Get();
                 }
             }
             catch (OperationCanceledException)

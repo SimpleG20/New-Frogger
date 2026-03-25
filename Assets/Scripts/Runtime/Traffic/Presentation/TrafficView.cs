@@ -5,10 +5,7 @@ using TMPro;
 
 using Cysharp.Threading.Tasks;
 
-using NewFrogger.Gameplay.Domain;
-using NewFrogger.Vehicle.Domain;
 using NewFrogger.Traffic.Domain;
-using NewFrogger.Traffic.Domain.Entities;
 
 namespace NewFrogger.Traffic.Presentation
 {
@@ -55,13 +52,13 @@ namespace NewFrogger.Traffic.Presentation
             _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_velocityAvgTx.text));
 
             _weatherTx.text = settings.Weather.ToString();
-            _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
+            _weatherTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
         }
 
-        public async UniTask ShowTrafficUpdateWarning(CancellationToken ct)
+        public async UniTask TimedShowTrafficUpdateWarning(float seconds, CancellationToken ct)
         {
             _trafficChangedPanel.SetActive(true);
-            await UniTask.Delay(TimeSpan.FromSeconds(2), cancellationToken: ct);
+            await UniTask.Delay(TimeSpan.FromSeconds(seconds), cancellationToken: ct);
             _trafficChangedPanel.SetActive(false);
         }
 

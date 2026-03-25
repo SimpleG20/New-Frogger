@@ -43,5 +43,13 @@ namespace NewFrogger.Gameplay.Composition
             _timeProvider ??= new UnityTimeProvider();
             return _timeProvider;
         }
+
+        public void Dispose()
+        {
+            _dataSource = null;
+            _repository = null;
+            _trafficStatsService = null;
+            _timeProvider = null;
+        }
     }
 }

@@ -1,8 +1,6 @@
 using System;
 using UnityEngine;
 
-using NewFrogger.Core.Domain;
-using NewFrogger.Gameplay.Data;
 using NewFrogger.Player.Domain;
 using NewFrogger.Traffic.Domain;
 
@@ -30,6 +28,9 @@ namespace NewFrogger.Player.Presentation
             _view.OnPlayerFinishedMovement += HandleOnPlayerFinishedMovement;
         }
 
+        public bool HasPlayerReachedVictory() => _model.IsInVictoryPos();
+
+        #region Handle Events
         private void HandleOnPlayerFinishedMovement()
         {
             if (_model.IsInVictoryPos()) OnPlayerReachedVictory?.Invoke();
@@ -42,7 +43,9 @@ namespace NewFrogger.Player.Presentation
         {
             _model.ChangeSpeedAccordingToWeather(newSettings.Weather);
         }
+        #endregion
 
+        #region Gameplay
         public void StartGameplay()
         {
             _model.SetActive(true);
@@ -64,11 +67,14 @@ namespace NewFrogger.Player.Presentation
         {
             _model.Reset();
         }
+        #endregion
 
         private void OnDestroy()
         {
             OnPlayerHitVehicle = null;
             OnPlayerReachedVictory = null;
+
+            _model?.Dispose();
         }
     }
 }

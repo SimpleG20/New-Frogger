@@ -43,16 +43,17 @@ namespace NewFrogger.Gameplay.Presentation
         public void ShowGameplayPanel() => _gameplayPanel.SetActive(true);
         public void HideGameplayPanel() => _gameplayPanel.SetActive(false);
 
-        public async UniTask ShowChangeLevelPanel(CancellationToken ct)
+        public async UniTask TimedShowChangeLevelPanel(CancellationToken ct)
         {
             try
             {
                 _changeLevelPanel.SetActive(true);
                 await UniTask.Delay(TimeSpan.FromSeconds(2)).AttachExternalCancellation(ct);
-            }
-            finally
-            {
                 _changeLevelPanel.SetActive(false);
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
 
@@ -61,5 +62,6 @@ namespace NewFrogger.Gameplay.Presentation
             _startBt.onClick.RemoveAllListeners();
             _stopBt.onClick.RemoveAllListeners();
         }
+
     }
 }

@@ -1,10 +1,8 @@
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 using CustomLogger;
 
 using NewFrogger.Player.Presentation;
-using NewFrogger.Traffic.Domain;
 using NewFrogger.Traffic.Presentation;
 
 namespace NewFrogger.Gameplay.Presentation
@@ -26,52 +24,55 @@ namespace NewFrogger.Gameplay.Presentation
             _playerController = player;
             _trafficController = traffic;
             _generalCTS = generalCts;
-        }
 
-        public void StartGameplay()
-        {
+            _trafficController.OnLevelTimerEnded += HandleOnLevelTimerEnded;
+            _trafficController.OnChangeTrafficSettings += HandleOnChangeTrafficSettings;
             _playerController.OnPlayerHitVehicle += HandleOnPlayerHitVehicle;
             _playerController.OnPlayerReachedVictory += HandleOnPlayerReachedVictory;
-
-            _view.StartGameplay();
-
-            _trafficController.OnTrafficSettingsChanged += ChangeTrafficSettings;
-            _trafficController.StartGameplay(_generalCTS.Token);
-            _playerController.StartGameplay();
-
-            IsRunning = true;
         }
 
-        private async void HandleOnPlayerReachedVictory()
+        #region Handle Events
+        private void HandleOnLevelTimerEnded()
         {
-            if (_trafficController.HasNextLevel())
-            {
-                _playerController.ResetPlayer();
-                _trafficController.EndLevel();
-                _trafficController.IncreaseLevel();
-                await _view.ShowChangeLevelPanel(_generalCTS.Token);
-                await _trafficController.StartLevel(_generalCTS.Token);
-                _playerController.StartGameplay();
-            }
+            if (!_playerController.HasPlayerReachedVictory()) EndGameplay();
         }
-
         private void HandleOnPlayerHitVehicle()
         {
             EndGameplay();
         }
-
-        public void PauseGameplay()
+        private async void HandleOnPlayerReachedVictory()
         {
-            _playerController.Pause();
-            _trafficController.PauseGameplay();
+            try
+            {
+                if (_trafficController.HasNextLevel())
+                {
+                    _playerController.ResetPlayer();
+                    _trafficController.EndLevel();
+                    _trafficController.IncreaseLevel();
+                    await _view.TimedShowChangeLevelPanel(_generalCTS.Token);
+                    await _trafficController.StartLevel(_generalCTS.Token);
+                    _playerController.StartGameplay();
+                    _playerController.Pause();
+                }
+                else
+                {
+                    EndGameplay();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.log(ex);
+                EndGameplay();
+            }
         }
-
-        public async void ChangeTrafficSettings(TrafficSettings newSettings)
+        private async void HandleOnChangeTrafficSettings()
         {
             try
             {
                 PauseGameplay();
-                await _trafficController.ShowChangeTrafficSettings(_generalCTS.Token);
+                var newSettings = await _trafficController.ChangeTrafficSettings(_generalCTS.Token);
+                if (newSettings.Equals(default)) return;
+
                 _playerController.HandleTrafficSettingsUpdate(newSettings);
                 ResumeGameplay();
             }
@@ -80,13 +81,29 @@ namespace NewFrogger.Gameplay.Presentation
                 Log.log(ex);
             }
         }
+        #endregion
 
+        #region Gameplay
+        public void StartGameplay()
+        {
+            _view.StartGameplay();
+
+            _trafficController.StartGameplay(_generalCTS.Token);
+            _playerController.StartGameplay();
+            _playerController.Pause();
+
+            IsRunning = true;
+        }
+        public void PauseGameplay()
+        {
+            _playerController.Pause();
+            _trafficController.PauseGameplay();
+        }
         public void ResumeGameplay()
         {
             _playerController.Resume();
             _trafficController.ResumeGameplay();
         }
-
         public void EndGameplay()
         {
             IsRunning = false;
@@ -96,6 +113,15 @@ namespace NewFrogger.Gameplay.Presentation
 
             _view.HideGameplayPanel();
             _view.ShowStartMenu();
+        }
+        #endregion
+
+        public void Dispose()
+        {
+            _view = null;
+            _playerController = null;
+            _trafficController = null;
+            _generalCTS = null;
         }
     }
 }

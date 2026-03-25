@@ -56,19 +56,15 @@ namespace NewFrogger.Player.Domain
 
         public void SetInitialPosition(Vector3 position) => _initialPos = position;
         public void SetPosition(Vector3 newPosition) => _position = newPosition;
-
-        public bool IsInVictoryPos() => _position.x >= _xVictory;
-
+        public void SetCanMove(bool value) => _canMove = value;
         public void SetActive(bool value)
         {
             if (value == Active) return;
             Active = value;
             OnActiveChanged?.Invoke(value);
         }
-        public void SetCanMove(bool value)
-        {
-            _canMove = value;
-        }
+
+        public bool IsInVictoryPos() => _position.x >= _xVictory;
 
         public void Move(Vector2 direction)
         {
@@ -122,7 +118,6 @@ namespace NewFrogger.Player.Domain
             OnPositionChanged?.Invoke(0, _position);
             SetActive(false);
         }
-
         public void Dispose()
         {
             OnActiveChanged = null;

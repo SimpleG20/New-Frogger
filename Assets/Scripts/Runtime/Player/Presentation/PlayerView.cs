@@ -34,18 +34,18 @@ namespace NewFrogger.Player.Presentation
                 });
         }
 
-        private void OnDestroy()
-        {
-            OnVehicleHit = null;
-            OnPlayerFinishedMovement = null;
-        }
-
         private void OnTriggerEnter(Collider other)
         {
             if (other.CompareTag(_vehicleTag))
             {
                 OnVehicleHit?.Invoke();
             }
+        }
+
+        private void OnDestroy()
+        {
+            OnVehicleHit = null;
+            OnPlayerFinishedMovement = null;
         }
     }
 }
