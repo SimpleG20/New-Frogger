@@ -6,7 +6,7 @@ namespace NewFrogger.Vehicle.Presentation
 {
     public class VehicleView : MonoBehaviour
     {
-        public event Action<VehicleModel> OnLimitReached;
+        public event Action<VehicleView> OnLimitReached;
 
         private float _zLimit;
         private Vector3 _initialPos;
@@ -43,14 +43,14 @@ namespace NewFrogger.Vehicle.Presentation
 
         private void Update()
         {
-            if (_model == null || !_model.Active) return;
+            if (_model == null 
+                || !_model.Active 
+                || !_model.CanMove
+            ) return;
 
             transform.Translate(Vector3.forward * _model.Speed * Time.deltaTime);
 
-            if (transform.position.z > _zLimit)
-            {
-                OnLimitReached?.Invoke(_model);
-            }
+            if (transform.position.z > _zLimit) OnLimitReached?.Invoke(this);
         }
 
         private void HandleOnActiveChanged(bool value)

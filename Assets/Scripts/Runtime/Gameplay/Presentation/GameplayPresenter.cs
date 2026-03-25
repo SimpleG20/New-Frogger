@@ -1,21 +1,15 @@
-using System;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 using CustomLogger;
-using Cysharp.Threading.Tasks;
 
 using NewFrogger.Gameplay.Composition;
 using NewFrogger.Gameplay.Data;
-using NewFrogger.Gameplay.Domain;
 using NewFrogger.Player.Domain;
 using NewFrogger.Player.Presentation;
-using NewFrogger.Vehicle.Domain;
-using NewFrogger.Vehicle.Presentation;
-using NewFrogger.Traffic.Presentation;
 using NewFrogger.Traffic.Domain;
+using NewFrogger.Traffic.Presentation;
 
 namespace NewFrogger.Gameplay.Presentation
 {
@@ -25,16 +19,14 @@ namespace NewFrogger.Gameplay.Presentation
         [SerializeField] private GameplaySettingsSO _gameplaySettingsSO;
         [SerializeField] private GameplayView _gameplayView;
 
-        [Header("Traffic")]
-        [SerializeField] private TrafficSpawner _trafficSpawner;
-        [SerializeField] private TrafficView _trafficView;
+        [Header("Controllers")]
+        [SerializeField] private PlayerController _playerController;
+        [SerializeField] private TrafficController _trafficController;
 
         [Header("Player")]
-        [SerializeField] private PlayerView _playerView;
         [SerializeField] private PlayerInput _input;
 
-        private PlayerModel _player;
-        private TrafficModel _traffic;
+        private GameplayLifecycle _lifecycle;
         private GameplayInputHandler _gameplayInput;
         private GameplayCompositionRoot _compositionRoot;
 
@@ -47,141 +39,36 @@ namespace NewFrogger.Gameplay.Presentation
 
         public void Initialize()
         {
-            Log.SetLogger(new EditorLogger());
-
-            _generalCTS = new CancellationTokenSource();
-            _compositionRoot = new GameplayCompositionRoot(_apiBaseUrl);
-
-            InitializeTraffic();
-            InitializePlayer();
-
-            _gameplayInput = new GameplayInputHandler(_player, _input);
-
             _gameplayView.Initialize();
             _gameplayView.OnStart += StartGameplay;
-            _gameplayView.OnStop += StopGameplay;
+            _gameplayView.OnStop += ForceEndGameplay;
+
+            _compositionRoot = new GameplayCompositionRoot(_apiBaseUrl);
+
+            var playerModel = new PlayerModel(_gameplaySettingsSO, _compositionRoot.GetTimeProvider());
+            var trafficModel = new TrafficModel(_gameplaySettingsSO, _compositionRoot.GetTrafficStatsService());
+
+            _playerController.Initialize(playerModel);
+            _trafficController.Initialize(trafficModel);
+
+            _generalCTS = new CancellationTokenSource();
+            _gameplayInput = new GameplayInputHandler(playerModel, _input);
+            _lifecycle = new GameplayLifecycle(_gameplayView, _playerController, _trafficController, _generalCTS);
 
             Log.log("Gameplay Presenter Initialized");
         }
-        private void InitializeTraffic()
-        {
-            _traffic = new TrafficModel(_gameplaySettingsSO, _compositionRoot.GetTrafficStatsService(), _generalCTS.Token);
-            _traffic.OnTrafficSettingsChanged += HandleOnTrafficSettingsChanged;
-            _traffic.OnStartNewLevel += HandleOnTrafficStartNewLevel;
-            _traffic.OnStopLevel += HandleOnTrafficStopLevel;
-            _traffic.OnGameEnded += HandleOnGameEnded;
 
-            _trafficView.Initialize(_traffic);
-            _trafficView.OnPanelHid += HandleOnPanelHid;
-        }
-        private void InitializePlayer()
-        {
-            Vector3 initialPos = _playerView.transform.position;
-            _player = new PlayerModel(initialPos, _gameplaySettingsSO, _compositionRoot.GetTimeProvider());
-            _playerView.Initialize(_player);
-            _playerView.OnVehicleHit += HandleOnPlayerHitVehicle;
-            _playerView.OnPlayerFinishedMovement += HandleOnPlayerFinishedMovement;
-        }
-
-        #region Handle Events
-        private void HandleOnPanelHid()
-        {
-            _player.SetCanMove(true);
-        }
-        private void HandleOnTrafficStopLevel()
-        {
-            _trafficSpawner.StopSpawning();
-            _trafficSpawner.HideVehicles();
-        }
-        private void HandleOnTrafficStartNewLevel(int level, int time)
-        {
-            _trafficSpawner.HandleStart(_traffic.CurrentTrafficSettings, 10);
-        }
-        private void HandleOnTrafficSettingsChanged(TrafficSettings newSettings)
-        {
-            _trafficSpawner.UpdateTrafficSettings(newSettings);
-            _player.ChangeSpeedAccordingToWeather(newSettings.Weather);
-            _player.SetCanMove(false);
-        }
-        private void HandleOnPlayerFinishedMovement()
-        {
-            if (_player.Position.x == _gameplaySettingsSO.xVictory) Victory();
-            else Log.log("Not yet");
-        }
-        private void HandleOnPlayerHitVehicle()
-        {
-            EndLevel();
-        }
-        private void HandleOnGameEnded()
-        {
-            _trafficSpawner.StopSpawning();
-            _trafficSpawner.HideVehicles();
-            _player.SetCanMove(false);
-            StopGameplay();
-        }
-        #endregion
-
-        private void StartGameplay()
-        {
-            _gameplayView.HideStartMenu();
-            _gameplayView.ShowGameplayPanel();
-            StartNewLevel();
-        }
-        private void StartNewLevel()
-        {
-            _ = _traffic.StartNewLevel();
-            _player.SetActive(true);
-            _player.SetCanMove(true);
-        }
-        private void StopGameplay()
-        {
-            _generalCTS?.Cancel();
-            _gameplayView.HideGameplayPanel();
-            _gameplayView.ShowStartMenu();
-        }
-        private async UniTask Victory()
-        {
-            EndLevel();
-
-            if (_traffic.CanNextLevel())
-            {
-                await _gameplayView.ShowChangeLevelPanel(_generalCTS.Token);
-                StartNewLevel();
-            }
-            else
-            {
-                StopGameplay();
-            }
-        }
-        private void EndLevel()
-        {
-            _traffic?.EndLevel();
-            _player?.Reset();
-        }
+        private void StartGameplay() => _lifecycle.StartGameplay();
+        private void ForceEndGameplay() => _lifecycle.EndGameplay();
 
         private void OnDestroy()
         {
-            if (_traffic != null)
-            {
-                _traffic.OnTrafficSettingsChanged -= HandleOnTrafficSettingsChanged;
-                _traffic.OnStartNewLevel -= HandleOnTrafficStartNewLevel;
-                _traffic.OnStopLevel -= HandleOnTrafficStopLevel;
-                _traffic.OnGameEnded -= HandleOnGameEnded;
-                _traffic.Dispose();
-            }
+            _generalCTS?.Cancel();
+            _generalCTS?.Dispose();
 
-            if (_trafficView != null)
-            {
-                _trafficView.OnPanelHid -= HandleOnPanelHid;
-            }
-
-            if (_playerView != null)
-            {
-                _playerView.OnPlayerFinishedMovement -= HandleOnPlayerFinishedMovement;
-                _playerView.OnVehicleHit -= HandleOnPlayerHitVehicle;
-            }
-
+            _lifecycle?.Dispose();
             _gameplayInput?.Dispose();
+            _compositionRoot?.Dispose();
         }
     }
 }

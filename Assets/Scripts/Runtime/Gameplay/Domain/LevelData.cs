@@ -1,7 +1,6 @@
 using System.Linq;
 using NewFrogger.Traffic.Domain;
 using NewFrogger.Traffic.Domain.Entities;
-using NewFrogger.Vehicle.Domain;
 
 namespace NewFrogger.Gameplay.Domain
 {

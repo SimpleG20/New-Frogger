@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 197a02e96e317458491ef637c6522834, type: 3}
   m_Name: Gameplay settings
   m_EditorClassIdentifier: 
-  <ReferenceSpeed>k__BackingField: 5
+  <ReferenceSpeed>k__BackingField: 6
   <MaxLevels>k__BackingField: 3
   <zVehicleLimit>k__BackingField: 10
   <xVictory>k__BackingField: 7

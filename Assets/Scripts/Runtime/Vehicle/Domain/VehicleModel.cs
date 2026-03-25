@@ -8,18 +8,16 @@ namespace NewFrogger.Vehicle.Domain
         
         public float Speed { get; private set; }
         public bool Active { get; private set; }
+        public bool CanMove { get; private set; }
         
         private readonly float m_referenceSpeed;
 
-        public VehicleModel(float rawSpeed, float referenceSpeed)
+        public VehicleModel(float referenceSpeed)
         {
-            if (rawSpeed < 0) throw new ArgumentException("Vehicle cannot have a negative speed.");
             if (referenceSpeed <= 0) throw new ArgumentException("Reference speed must be greater than zero.");
             
             m_referenceSpeed = referenceSpeed;
             Active = false;
-            
-            ChangeSpeed(rawSpeed);
         }
 
         public void ChangeSpeed(float rawSpeed)
@@ -33,6 +31,11 @@ namespace NewFrogger.Vehicle.Domain
         {
             Active = value;
             OnActiveChanged?.Invoke(value);
+        }
+
+        public void SetCanMove(bool v)
+        {
+            CanMove = v;
         }
     }
 }

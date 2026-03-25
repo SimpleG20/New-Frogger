@@ -7,10 +7,10 @@ namespace CustomLogger
     {
         private static ILogger _logger;
 
-        public static void SetLogger(ILogger logger)
+        [RuntimeInitializeOnLoadMethod]
+        private static void SetLogger()
         {
-            if (logger == null) return;
-            _logger = logger;
+            _logger = new EditorLogger();
         }
 
         public static void log(object message)

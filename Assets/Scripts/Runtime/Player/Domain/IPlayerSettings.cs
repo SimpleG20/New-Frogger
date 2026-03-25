@@ -8,5 +8,6 @@ namespace NewFrogger.Player.Domain
         float MaxX { get; }
         float MinZ { get; }
         float MaxZ { get; }
+        float xVictory { get; }
     }
 }

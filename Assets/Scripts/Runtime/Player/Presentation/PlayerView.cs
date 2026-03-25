@@ -11,15 +11,12 @@ namespace NewFrogger.Player.Presentation
 
         [SerializeField] private string _vehicleTag = "Vehicle";
 
-        private PlayerModel _player;
-
         public void Initialize(PlayerModel player)
         {
-            _player = player ?? throw new ArgumentNullException(nameof(player));
             gameObject.SetActive(player.Active);
 
-            _player.OnPositionChanged += HandleOnMovement;
-            _player.OnActiveChanged += HandleOnActiveChanged;
+            player.OnPositionChanged += HandleOnMovement;
+            player.OnActiveChanged += HandleOnActiveChanged;
         }
 
         private void HandleOnActiveChanged(bool value)
@@ -37,21 +34,18 @@ namespace NewFrogger.Player.Presentation
                 });
         }
 
-        private void OnDestroy()
+        private void OnTriggerEnter(Collider other)
         {
-            if (_player != null)
-            {
-                _player.OnPositionChanged -= HandleOnMovement;
-                _player.OnActiveChanged -= HandleOnActiveChanged;
-            }
-        }
-
-        private void OnCollisionEnter(Collision collision)
-        {
-            if (collision.gameObject.CompareTag(_vehicleTag))
+            if (other.CompareTag(_vehicleTag))
             {
                 OnVehicleHit?.Invoke();
             }
+        }
+
+        private void OnDestroy()
+        {
+            OnVehicleHit = null;
+            OnPlayerFinishedMovement = null;
         }
     }
 }
