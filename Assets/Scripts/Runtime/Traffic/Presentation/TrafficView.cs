@@ -20,7 +20,7 @@ namespace NewFrogger.Traffic.Presentation
         [SerializeField] private TMP_Text _velocityAvgTx;
         [SerializeField] private TMP_Text _weatherTx;
         [SerializeField] private TMP_Text _levelTx;
-        [SerializeField] private TMP_Text _timeTx;
+        [SerializeField] private TMP_Text _predictionTimeTx;
 
         public void Initialize()
         {
@@ -34,7 +34,7 @@ namespace NewFrogger.Traffic.Presentation
             _velocityAvgTx.gameObject.SetActive(!string.IsNullOrEmpty(_weatherTx.text));
 
             _levelTx.text = level.ToString();
-            _timeTx.text = time.ToString();
+            _predictionTimeTx.text = time.ToString();
             _levelTx.gameObject.SetActive(true);
         }
 
@@ -43,11 +43,11 @@ namespace NewFrogger.Traffic.Presentation
             _trafficChangedPanel.SetActive(false);
             _velocityAvgTx.text = "";
             _weatherTx.text = "";
-            _timeTx.text = "";
+            _predictionTimeTx.text = "";
             _root.SetActive(false);
         }
 
-        public void UpdateCountdown(int time) => _timeTx.text = time.ToString();
+        public void UpdatePredictionCountdown(int time) => _predictionTimeTx.text = time.ToString();
         public void UpdateLevel(int v) => _levelTx.text = v.ToString();
         public void UpdateTrafficSettings(TrafficSettings settings)
         {

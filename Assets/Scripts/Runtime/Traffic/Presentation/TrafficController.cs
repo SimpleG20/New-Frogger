@@ -8,7 +8,6 @@ using CustomLogger;
 using Cysharp.Threading.Tasks;
 
 using NewFrogger.Traffic.Domain;
-using NewFrogger.Traffic.Domain.Services;
 using NewFrogger.Vehicle.Presentation;
 using NewFrogger.Vehicle.Domain;
 
@@ -35,7 +34,8 @@ namespace NewFrogger.Traffic.Presentation
             _spawner.OnRelease += HandleOnRelease;
 
             _view.Initialize();
-            _model.OnCountdownChanged += _view.UpdateCountdown;
+            _model.OnPredictionCountdownChanged += _view.UpdatePredictionCountdown;
+            _model.OnLevelCountdownChanged += HandleOnLevelCountdown;
         }
 
         private void PublishOnTrafficSettingsChanged(TrafficSettings newSettings)
@@ -73,6 +73,10 @@ namespace NewFrogger.Traffic.Presentation
         {
             _spawner.Release(vehicle);
         }
+        private void HandleOnLevelCountdown(int time)
+        {
+            if (time == 0) EndGameplay();
+        }
 
         public void StartGameplay(CancellationToken token)
         {
@@ -85,7 +89,7 @@ namespace NewFrogger.Traffic.Presentation
             {
                 await _model.StartNewLevel(ct);
                 _spawner.StartSpawning(_model.CurrentTrafficSettings);
-                _view.StartLevel(_model.CurrentLevel, _model.Timer.TimeInSecs);
+                _view.StartLevel(_model.CurrentLevel, _model.PredictionTimer.TimeInSecs);
             }
             catch (Exception ex)
             {
@@ -129,6 +133,7 @@ namespace NewFrogger.Traffic.Presentation
         public void EndGameplay()
         {
             _spawner.StopSpawning();
+            _model.EndGameplay();
             ReturnVehiclesToPool();
         }
 

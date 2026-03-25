@@ -4,7 +4,7 @@ using System.Threading;
 
 using CustomLogger;
 using Cysharp.Threading.Tasks;
-
+using NewFrogger.Core.Data;
 using NewFrogger.Gameplay.Domain;
 using NewFrogger.Traffic.Domain.Services;
 using NewFrogger.Vehicle.Domain;
@@ -13,19 +13,22 @@ namespace NewFrogger.Traffic.Domain
 {
     public class TrafficModel : IDisposable
     {
-        public event Action<int> OnCountdownChanged;
+        public event Action<int> OnLevelCountdownChanged;
+        public event Action<int> OnPredictionCountdownChanged;
         public event Action<TrafficSettings> OnTrafficSettingsChanged;
 
-        public Timer Timer => _timer;
+        public TimerInSecs PredictionTimer => _predictionTimer;
 
         public int CurrentLevel { get; private set; }
         public TrafficSettings CurrentTrafficSettings { get; private set; }
 
         private int _predictionIndex;
 
-        private Timer _timer;
         private LevelData _levelData;
+        private TimerInSecs _levelTimer;
+        private TimerInSecs _predictionTimer;
         private List<VehicleModel> _activeVehicles;
+
         private readonly IGetTrafficStatsService _trafficStatsService;
         private readonly ITrafficLevelSettings _trafficLevelSettings;
         
@@ -37,8 +40,9 @@ namespace NewFrogger.Traffic.Domain
             _trafficLevelSettings = settings ?? throw new ArgumentNullException(nameof(settings));
             _trafficStatsService = trafficService ?? throw new ArgumentNullException(nameof(trafficService));
 
-            _activeVehicles = new();
             CurrentLevel = 1;
+
+            _activeVehicles = new();
         }
 
         public bool CanNextLevel() => CurrentLevel < _trafficLevelSettings.MaxLevels;
@@ -99,6 +103,11 @@ namespace NewFrogger.Traffic.Domain
                 vehicle.SetCanMove(true);
             }
         }
+        public void EndGameplay()
+        {
+            CtsClean();
+        }
+        #endregion
 
         #region Level
         public async UniTask StartNewLevel(CancellationToken externalToken)
@@ -111,7 +120,7 @@ namespace NewFrogger.Traffic.Domain
 
                 SetCurrentTrafficSettings(_predictionIndex);
 
-                StartTimer();
+                StartLevelTimer();
                 var task = StartPrediction();
             }
             catch (Exception)
@@ -130,16 +139,22 @@ namespace NewFrogger.Traffic.Domain
             var status = await _trafficStatsService.call(new StatsArg(CurrentLevel, _gameCT));
             _levelData = new LevelData(_trafficLevelSettings.ReferenceSpeed, _trafficLevelSettings.zVehicleLimit, status.CurrentStatus, status.PredictedStatus);
         }
-        private void StartTimer()
+        private void StartLevelTimer()
         {
             int time = _levelData.MaxTime / 1000;
-            _timer = new Timer(time);
-            _timer.OnCountdown += HandleOnCountdown;
-            _ = _timer.StartTimer(_gameCT);
+
+            _levelTimer?.Dispose();
+            _levelTimer = new TimerInSecs(time);
+            _levelTimer.OnCountdown += HandleOnLevelCountdown;
+            _levelTimer.Start(_gameCT);
         }
-        private void HandleOnCountdown(int time)
+        private void HandleOnLevelCountdown(int time)
         {
-            OnCountdownChanged?.Invoke(time);
+            OnLevelCountdownChanged?.Invoke(time);
+        }
+        private void HandleOnPredictionCountdown(int time)
+        {
+            OnPredictionCountdownChanged?.Invoke(time);
         }
 
         private async UniTask StartPrediction()
@@ -151,6 +166,11 @@ namespace NewFrogger.Traffic.Domain
                 while (!predictionToken.IsCancellationRequested && NextPrediction())
                 {
                     var estimatedTime = _levelData.TrafficSettings[_predictionIndex].EstimatedTime;
+
+                    _predictionTimer?.Dispose();
+                    _predictionTimer = new TimerInSecs(estimatedTime/1000);
+                    _predictionTimer.OnCountdown += HandleOnPredictionCountdown;
+                    _predictionTimer.Start(predictionToken);
 
                     await UniTask.Delay(TimeSpan.FromMilliseconds(estimatedTime), cancellationToken: predictionToken);
 
@@ -186,31 +206,30 @@ namespace NewFrogger.Traffic.Domain
 
         public void EndLevel()
         {
-            PartialClean();
+            CtsClean();
         }
 
-        private void PartialClean()
+        private void CtsClean()
         {
-            _timer?.Stop();
-            _timer?.Dispose();
-            _timer = null;
+            _levelTimer?.Stop();
+            _levelTimer?.Dispose();
+            _levelTimer = null;
 
             _predictionCTS?.Cancel();
             _predictionCTS?.Dispose();
             _predictionCTS = null;
-
-            CurrentTrafficSettings = default;
         }
         #endregion
 
-        #endregion
 
         public void Dispose()
         {
-            PartialClean();
-
-            OnCountdownChanged = null;
+            OnPredictionCountdownChanged = null;
             OnTrafficSettingsChanged = null;
+            OnLevelCountdownChanged = null;
+
+            CtsClean();
         }
+
     }
 }
