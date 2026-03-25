@@ -6,9 +6,12 @@ using UnityEngine.Pool;
 
 using CustomLogger;
 using Cysharp.Threading.Tasks;
-using NewFrogger.Vehicle.Domain;
 
-namespace NewFrogger.Vehicle.Presentation
+using NewFrogger.Vehicle.Domain;
+using NewFrogger.Vehicle.Presentation;
+using NewFrogger.Traffic.Domain;
+
+namespace NewFrogger.Traffic.Presentation
 {
     public class TrafficSpawner : MonoBehaviour
     {

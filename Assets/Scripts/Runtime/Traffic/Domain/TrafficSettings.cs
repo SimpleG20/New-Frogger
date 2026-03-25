@@ -1,6 +1,6 @@
 using NewFrogger.Traffic.Domain.Enums;
 
-namespace NewFrogger.Vehicle.Domain
+namespace NewFrogger.Traffic.Domain
 {
     public readonly struct TrafficSettings
     {

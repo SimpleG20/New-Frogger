@@ -1,6 +1,6 @@
 using NewFrogger.Vehicle.Domain;
 
-namespace NewFrogger.Gameplay.Domain
+namespace NewFrogger.Traffic.Domain
 {
     public readonly struct TrafficSettingsPredicted
     {

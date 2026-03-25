@@ -1,9 +1,12 @@
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 using CustomLogger;
 using Cysharp.Threading.Tasks;
+
 using NewFrogger.Gameplay.Composition;
 using NewFrogger.Gameplay.Data;
 using NewFrogger.Gameplay.Domain;
@@ -11,8 +14,8 @@ using NewFrogger.Player.Domain;
 using NewFrogger.Player.Presentation;
 using NewFrogger.Vehicle.Domain;
 using NewFrogger.Vehicle.Presentation;
-using System.Threading.Tasks;
-using System.Threading;
+using NewFrogger.Traffic.Presentation;
+using NewFrogger.Traffic.Domain;
 
 namespace NewFrogger.Gameplay.Presentation
 {

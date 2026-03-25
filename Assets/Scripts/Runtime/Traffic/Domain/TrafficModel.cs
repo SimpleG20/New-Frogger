@@ -8,7 +8,7 @@ using NewFrogger.Gameplay.Domain;
 using NewFrogger.Traffic.Domain.Services;
 using NewFrogger.Vehicle.Domain;
 
-namespace NewFrogger.Gameplay.Domain
+namespace NewFrogger.Traffic.Domain
 {
     public class TrafficModel : IDisposable
     {
