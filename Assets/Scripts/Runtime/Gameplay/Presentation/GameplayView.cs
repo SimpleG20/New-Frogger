@@ -28,6 +28,12 @@ namespace NewFrogger.Gameplay.Presentation
             _changeLevelPanel.SetActive(false);
         }
 
+        public void StartGameplay()
+        {
+            HideStartMenu();
+            ShowGameplayPanel();
+        }
+
         private void PublishOnStart() => OnStart?.Invoke();
         private void PublishOnStop() => OnStop?.Invoke();
 
