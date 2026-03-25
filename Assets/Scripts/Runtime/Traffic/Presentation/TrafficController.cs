@@ -32,6 +32,7 @@ namespace NewFrogger.Traffic.Presentation
             const int maxVehicles = 10;
             _spawner.Initialize(maxVehicles);
             _spawner.OnSpawn += HandleOnSpawn;
+            _spawner.OnRelease += HandleOnRelease;
 
             _view.Initialize();
             _model.OnCountdownChanged += _view.UpdateCountdown;
@@ -52,16 +53,24 @@ namespace NewFrogger.Traffic.Presentation
         private void HandleOnSpawn(VehicleView vehicle)
         {
             vehicle.OnLimitReached += HandleOnLimitReached;
-            var model = vehicle.GetModel();
-            _vehicleModelToView[model] = vehicle;
-            _model.RegistryVehicle(model);
+            var vehicleModel = vehicle.GetModel();
+            if (_model.TryRegistryVehicle(vehicleModel))
+            {
+                _vehicleModelToView[vehicleModel] = vehicle;
+                vehicleModel.SetCanMove(true);
+            }
+        }
+        private void HandleOnRelease(VehicleView vehicle)
+        {
+            vehicle.OnLimitReached -= HandleOnLimitReached;
+            var vehicleModel = vehicle.GetModel();
+            if (_model.TryUnregisterVehicle(vehicleModel))
+            {
+                _vehicleModelToView.Remove(vehicleModel);
+            }
         }
         private void HandleOnLimitReached(VehicleView vehicle)
         {
-            vehicle.OnLimitReached -= HandleOnLimitReached;
-            var model = vehicle.GetModel();
-            _vehicleModelToView.Remove(model);
-            _model.UnregisterVehicle(model);
             _spawner.Release(vehicle);
         }
 
@@ -101,10 +110,7 @@ namespace NewFrogger.Traffic.Presentation
                 {
                     if (_vehicleModelToView.TryGetValue(model, out var view))
                     {
-                        view.OnLimitReached -= HandleOnLimitReached;
                         _spawner.Release(view);
-                        _model.UnregisterVehicle(model);
-                        _vehicleModelToView.Remove(model);
                     }
                 }
             }
@@ -113,12 +119,12 @@ namespace NewFrogger.Traffic.Presentation
         public void PauseGameplay()
         {
             _model.PauseGameplay();
-            _spawner.StopSpawning();
+            _spawner.PauseSpawning();
         }
         public void ResumeGameplay()
         {
             _model.ResumeGameplay();
-            _spawner.StartSpawning(_model.CurrentTrafficSettings);
+            _spawner.ResumeSpawning();
         }
         public void EndGameplay()
         {

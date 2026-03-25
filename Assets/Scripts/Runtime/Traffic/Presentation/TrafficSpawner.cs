@@ -20,6 +20,7 @@ namespace NewFrogger.Traffic.Presentation
         [SerializeField] private Transform[] _lanes;
 
         public event Action<VehicleView> OnSpawn;
+        public event Action<VehicleView> OnRelease;
 
         private int _lastLaneChoosen;
         private bool _paused;
@@ -64,6 +65,7 @@ namespace NewFrogger.Traffic.Presentation
         }
         private void OnReleaseVehicle(VehicleView vehicle)
         {
+            OnRelease?.Invoke(vehicle);
         }
         private void OnDestroyVehicle(VehicleView vehicle)
         {

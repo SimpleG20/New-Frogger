@@ -56,24 +56,27 @@ namespace NewFrogger.Traffic.Domain
             activeVehicles = null;
             return false;
         }
-        public void RegistryVehicle(VehicleModel vehicle)
+        public bool TryRegistryVehicle(VehicleModel vehicle)
         {
-            if (vehicle == null) return;
+            if (vehicle == null) return false;
             if (_activeVehicles.Contains(vehicle))
             {
                 Log.log("Trying to add a vehicle already in");
-                return;
+                return false;
             }
             vehicle.SetActive(true);
             _activeVehicles.Add(vehicle);
+            return true;
         }
-        public void UnregisterVehicle(VehicleModel vehicle)
+        public bool TryUnregisterVehicle(VehicleModel vehicle)
         {
             if (_activeVehicles.Contains(vehicle))
             {
                 vehicle.SetActive(false);
                 _activeVehicles.Remove(vehicle);
+                return true;
             }
+            return false;
         }
         #endregion
 
