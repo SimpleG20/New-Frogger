@@ -1,6 +1,5 @@
 using UnityEngine;
 using NewFrogger.Player.Domain;
-using NewFrogger.Gameplay.Domain;
 using NewFrogger.Traffic.Domain;
 
 namespace NewFrogger.Gameplay.Data
