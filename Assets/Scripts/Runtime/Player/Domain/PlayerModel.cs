@@ -9,7 +9,6 @@ namespace NewFrogger.Player.Domain
     public class PlayerModel
     {
         public event Action<bool> OnActiveChanged;
-        public event Action<float> OnSpeedChanged;
         public event Action<float, Vector3> OnPositionChanged;
 
         public Vector3 Position => _position;
@@ -27,13 +26,16 @@ namespace NewFrogger.Player.Domain
         private Tuple<float, float> _limitsZ;
         
         private Vector3 _position;
-        private readonly Vector3 _initialPos;
+        private Vector3 _initialPos;
+
+        private readonly float _xVictory;
         private readonly ITimeProvider _timeProvider;
 
-        public PlayerModel(Vector3 initialPosition, IPlayerSettings settings, ITimeProvider timeProvider)
+        public PlayerModel(IPlayerSettings settings, ITimeProvider timeProvider)
         {
-            _initialPos = initialPosition;
-            _position = initialPosition;
+            _initialPos = Vector3.zero;
+            _position = _initialPos;
+            _xVictory = settings.xVictory;
 
             _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
             
@@ -51,6 +53,11 @@ namespace NewFrogger.Player.Domain
 
             SetActive(false);
         }
+
+        public void SetInitialPosition(Vector3 position) => _initialPos = position;
+        public void SetPosition(Vector3 newPosition) => _position = newPosition;
+
+        public bool IsInVictoryPos() => _position.x >= _xVictory;
 
         public void SetActive(bool value)
         {
@@ -82,7 +89,6 @@ namespace NewFrogger.Player.Domain
 
             OnPositionChanged?.Invoke(_timeGap, _position);
         }
-
         private bool IsMovementValid(Vector2 direction)
         {
             if (!Active) return false;
@@ -98,7 +104,6 @@ namespace NewFrogger.Player.Domain
             
             return true;
         }
-
         public void ChangeSpeedAccordingToWeather(ETrafficWeather weather)
         {
             _speedFactorRelatedToWeather = weather switch
@@ -108,8 +113,6 @@ namespace NewFrogger.Player.Domain
                 ETrafficWeather.heavy_rain => 0.4f,
                 _ => 1,
             };
-
-            OnSpeedChanged?.Invoke(_speedFactorRelatedToWeather);
         }
 
         public void Reset()
@@ -118,6 +121,12 @@ namespace NewFrogger.Player.Domain
             _position = _initialPos;
             OnPositionChanged?.Invoke(0, _position);
             SetActive(false);
+        }
+
+        public void Dispose()
+        {
+            OnActiveChanged = null;
+            OnPositionChanged = null;
         }
     }
 }
