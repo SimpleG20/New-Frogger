@@ -17,13 +17,13 @@ namespace NewFrogger.Traffic.Data.Datasources
 
         public ApiTrafficDataSource(string baseURL = null)
         {
-            _baseURL = baseURL ?? "https://f98dcad7-664e-44fb-8c6f-79c727a98caf.mock.pstmn.io";
+            _baseURL = baseURL ?? throw new ArgumentNullException("API url must not be null");
         }
 
-        public async UniTask<TrafficStatsDTO> GetStats(CancellationToken ct = default)
+        public async UniTask<TrafficStatsDTO> GetStats(int level, CancellationToken ct)
         {
-            const string endpoint = "/v1/traffic/status";
-            string completePath = $"{_baseURL}{endpoint}";
+            const string endpoint = "/v1/traffic/status?level=";
+            string completePath = $"{_baseURL}{endpoint}{level}";
             
             using UnityWebRequest webRequest = UnityWebRequest.Get(completePath);
             
@@ -33,7 +33,7 @@ namespace NewFrogger.Traffic.Data.Datasources
 
                 if (webRequest.result != UnityWebRequest.Result.Success)
                 {
-                    string errorMsg = $"Traffic API error [{webRequest.result}]: {webRequest.error}";
+                    string errorMsg = $"Traffic API error: {webRequest.result}";
                     Log.log(errorMsg);
                     throw new System.Net.Http.HttpRequestException(errorMsg);
                 }
@@ -43,9 +43,11 @@ namespace NewFrogger.Traffic.Data.Datasources
                 {
                     throw new InvalidDataException("Received empty response from Traffic API");
                 }
+                // TODO: Remove later
                 Log.log(json);
 
-                return JsonUtility.FromJson<TrafficStatsDTO>(json);
+                var result = JsonUtility.FromJson<TrafficStatsDTO>(json);
+                return result;
             }
             catch (OperationCanceledException)
             {

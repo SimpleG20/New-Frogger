@@ -18,11 +18,11 @@ namespace NewFrogger.Traffic.Data.Repositories
             _trafficDataSource = trafficDataSource ?? throw new ArgumentNullException(nameof(trafficDataSource));
         }
 
-        public async UniTask<TrafficStatsModel> GetStats(CancellationToken ct = default)
+        public async UniTask<TrafficStatsModel> GetStats(int level, CancellationToken ct)
         {
             try
             {
-                var dto = await _trafficDataSource.GetStats(ct);
+                var dto = await _trafficDataSource.GetStats(level, ct);
                 return TrafficStatsModel.FromDTO(dto);
             }
             catch (OperationCanceledException)
@@ -32,7 +32,7 @@ namespace NewFrogger.Traffic.Data.Repositories
             catch (Exception e)
             {
                 Log.log($"Repository failed to fetch traffic stats: {e}");
-                return TrafficStatsModel.Default();
+                throw;
             }
         }
     }
