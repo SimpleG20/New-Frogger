@@ -8,6 +8,7 @@ namespace NewFrogger.Vehicle.Domain
         
         public float Speed { get; private set; }
         public bool Active { get; private set; }
+        public bool CanMove { get; private set; }
         
         private readonly float m_referenceSpeed;
 
@@ -33,6 +34,11 @@ namespace NewFrogger.Vehicle.Domain
         {
             Active = value;
             OnActiveChanged?.Invoke(value);
+        }
+
+        public void SetCanMove(bool v)
+        {
+            CanMove = v;
         }
     }
 }
