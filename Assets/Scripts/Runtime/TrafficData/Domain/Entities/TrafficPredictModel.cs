@@ -12,7 +12,7 @@ namespace NewFrogger.Traffic.Domain.Entities
             if (estimatedTime < 0) throw new ArgumentException("Estimated time cannot by less than zero");
 
             EstimatedTime = estimatedTime;
-            Status = status;
+            Status = status ?? throw new ArgumentNullException(nameof(status));
         }
     }
 }

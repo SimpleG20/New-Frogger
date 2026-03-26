@@ -13,7 +13,7 @@ namespace NewFrogger.Traffic.Domain.Entities
         public TrafficStatusModel(float vehicleDensity, float averageSpeed, string weather)
         {
             if (vehicleDensity < 0 || vehicleDensity > 1) throw new ArgumentOutOfRangeException(nameof(vehicleDensity));
-            if (averageSpeed < 0) throw new ArgumentException($"{nameof(averageSpeed)} cannot be less than 0");
+            if (averageSpeed < 0 || averageSpeed > 100) throw new ArgumentOutOfRangeException(nameof(averageSpeed));
 
             VehicleDensity = vehicleDensity;
             AverageSpeed = averageSpeed;
