@@ -43,8 +43,6 @@ namespace NewFrogger.Traffic.Data.Datasources
                 {
                     throw new InvalidDataException("Received empty response from Traffic API");
                 }
-                // TODO: Remove later
-                Log.log(json);
 
                 var result = JsonUtility.FromJson<TrafficStatsDTO>(json);
                 return result;
